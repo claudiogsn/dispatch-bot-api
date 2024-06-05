@@ -1,0 +1,70 @@
+<?php
+header('Content-Type: application/json; charset=utf-8');
+
+require_once 'controllers/EstabelecimentoController.php';
+require_once 'controllers/OrderController.php';
+
+$json = file_get_contents('php://input');
+$data = json_decode($json, true);
+
+if (isset($data['method']) && isset($data['data'])) {
+    $method = $data['method'];
+    $requestData = $data['data'];
+
+    try {
+        switch ($method) {
+            // Métodos para EstabelecimentoController
+            case 'getEstabelecimentos':
+                $response = EstabelecimentoController::getEstabelecimentos();
+                break;
+
+            // Métodos para OrderController
+            case 'createOrder':
+                $response = OrderController::createOrder($requestData);
+                break;
+            case 'readOrders':
+                $response = OrderController::readOrders();
+                break;
+            case 'updateOrder':
+                $response = OrderController::updateOrder($requestData['cod_iapp'], $requestData['data']);
+                break;
+            case 'deleteOrder':
+                $response = OrderController::deleteOrder($requestData['cod_iapp']);
+                break;
+            case 'getOrderByNumControle':
+                $response = OrderController::getOrderByNumControle($requestData['num_controle']);
+                break;
+            case 'getOrderByCodIapp':
+                $response = OrderController::getOrderByCodIapp($requestData['cod_iapp']);
+                break;
+
+            // Métodos para LogController
+            case 'addLog':
+                $response = LogController::addLog($requestData['id_loja'], $requestData['nome_loja'], $requestData['tipo_log'], $requestData['mensagem']);
+                break;
+            case 'getLogs':
+                $response = LogController::getLogs();
+                break;
+            case 'getLogsByType':
+                $response = LogController::getLogsByType($requestData['tipo_log']);
+                break;
+                
+            default:
+                http_response_code(405);
+                $response = array('error' => 'Método não suportado');
+                break;
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode($response);
+    } catch (Exception $e) {
+        http_response_code(500);
+        $response = array('error' => 'Erro interno do servidor: ' . $e->getMessage());
+        echo json_encode($response);
+    }
+} else {
+    header('Content-Type: application/json');
+    http_response_code(400);
+    echo json_encode(array('error' => 'Parâmetros inválidos'));
+}
+?>
