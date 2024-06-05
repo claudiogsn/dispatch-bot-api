@@ -17,6 +17,9 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'getEstabelecimentos':
                 $response = EstabelecimentoController::getEstabelecimentos();
                 break;
+            case 'getEstabelecimentoByCnpj':
+                $response = EstabelecimentoController::getEstabelecimentoByCnpj($requestData['cnpj'], $requestData['token']);
+                break;
 
             // Métodos para OrderController
             case 'createOrder':
@@ -48,7 +51,7 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'getLogsByType':
                 $response = LogController::getLogsByType($requestData['tipo_log']);
                 break;
-                
+
             default:
                 http_response_code(405);
                 $response = array('error' => 'Método não suportado');

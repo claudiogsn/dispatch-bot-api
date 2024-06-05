@@ -91,19 +91,14 @@ class OrderController {
     public static function getOrderByCodIapp($cod_iapp) {
         global $pdo;
 
-        $query = "SELECT * FROM orders WHERE cod_iapp = :cod_iapp";
+        $query = "SELECT COUNT(*) FROM orders WHERE cod_iapp = :cod_iapp";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':cod_iapp', $cod_iapp);
+        $stmt->execute();
 
-        if ($stmt->execute()) {
-            $order = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($order) {
-                return ($order);
-            } else {
-                return array(["message" => "Order not found."]);
-            }
-        } else {
-            return array(["message" => "Failed to retrieve order."]);
-        }
+        $count = $stmt->fetchColumn();
+
+        return ($count > 0);
     }
+
 }
