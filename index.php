@@ -3,6 +3,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_once 'controllers/EstabelecimentoController.php';
 require_once 'controllers/OrderController.php';
+require_once 'controllers/LogController.php';
 
 $json = file_get_contents('php://input');
 $data = json_decode($json, true);

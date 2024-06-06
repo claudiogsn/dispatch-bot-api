@@ -5,6 +5,7 @@ class LogController {
     public static function addLog($id_loja, $nome_loja, $tipo_log, $mensagem) {
         global $pdo;
 
+
         $query = "INSERT INTO logs (id_loja, nome_loja, tipo_log, mensagem) 
                   VALUES (:id_loja, :nome_loja, :tipo_log, :mensagem)";
         $stmt = $pdo->prepare($query);
