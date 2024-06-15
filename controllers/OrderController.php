@@ -7,7 +7,7 @@ class OrderController {
 
     public static function createOrder($order) {
         global $pdo;
-
+    
         $query = "INSERT INTO orders (num_controle, idestabelecimento, dt_mov, moment_dispatch, cod_iapp, created_at) 
                   VALUES (:num_controle, :idestabelecimento, :dt_mov, :moment_dispatch, :cod_iapp, :created_at)";
         $stmt = $pdo->prepare($query);
@@ -17,13 +17,14 @@ class OrderController {
         $stmt->bindParam(':moment_dispatch', $order['moment_dispatch']);
         $stmt->bindParam(':cod_iapp', $order['cod_iapp']);
         $stmt->bindParam(':created_at', $order['created_at']);
-
+    
         if ($stmt->execute()) {
             return array(["message" => "Order created successfully."]);
         } else {
             return array(["message" => "Failed to create order."]);
         }
     }
+    
 
     public static function readOrders() {
         global $pdo;
@@ -91,7 +92,20 @@ class OrderController {
     public static function getOrderByCodIapp($cod_iapp) {
         global $pdo;
 
-        $query = "SELECT COUNT(*) FROM orders WHERE cod_iapp = :cod_iapp";
+        $query = "SELECT * FROM orders WHERE cod_iapp = :cod_iapp";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':cod_iapp', $cod_iapp);
+        $stmt->execute();
+
+        $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return $orders;
+    }
+
+    public static function verifyDispatch($cod_iapp) {
+        global $pdo;
+
+        $query = "SELECT COUNT(*) FROM orders WHERE cod_iapp = :cod_iapp and moment_dispatch is not null";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':cod_iapp', $cod_iapp);
         $stmt->execute();
