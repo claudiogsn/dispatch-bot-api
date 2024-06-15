@@ -5,11 +5,14 @@ class LogController {
     public static function addLog($id_loja, $nome_loja, $tipo_log, $mensagem) {
         global $pdo;
 
+        $timestamp = date('Y-m-d H:i:s');
 
-        $query = "INSERT INTO logs (id_loja, nome_loja, tipo_log, mensagem) 
-                  VALUES (:id_loja, :nome_loja, :tipo_log, :mensagem)";
+
+        $query = "INSERT INTO logs (id_loja,timestamp, nome_loja, tipo_log, mensagem) 
+                  VALUES (:id_loja,:timestamp, :nome_loja, :tipo_log, :mensagem)";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':id_loja', $id_loja);
+        $stmt->bindParam(':timestamp', $timestamp);
         $stmt->bindParam(':nome_loja', $nome_loja);
         $stmt->bindParam(':tipo_log', $tipo_log);
         $stmt->bindParam(':mensagem', $mensagem);
