@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('America/Rio_Branco');
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../database/db.php';

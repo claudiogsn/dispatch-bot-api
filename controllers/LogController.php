@@ -1,11 +1,12 @@
 <?php
+date_default_timezone_set('America/Rio_Branco');
 require_once 'database/db.php';
 
 class LogController {
     public static function addLog($id_loja, $nome_loja, $tipo_log, $mensagem) {
         global $pdo;
 
-        $timestamp = date('Y-m-d H:i:s');
+        $timestamp = date('Y-m-d H:i:s'); 
 
 
         $query = "INSERT INTO logs (id_loja,timestamp, nome_loja, tipo_log, mensagem) 

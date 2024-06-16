@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('America/Rio_Branco');
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../database/db.php';
@@ -7,16 +8,26 @@ class OrderController {
 
     public static function createOrder($order) {
         global $pdo;
+
+        $timestamp = date('Y-m-d H:i:s'); 
+
+        $queryEstabelecimento = "SELECT * FROM estabelecimento WHERE idestabelecimento = :idestabelecimento";
+        $stmtEstabelecimento = $pdo->prepare($queryEstabelecimento);
+        $stmtEstabelecimento->bindParam(':idestabelecimento', $order['idestabelecimento']);
+        $stmtEstabelecimento->execute();
+        $estabelecimento = $stmtEstabelecimento->fetch(PDO::FETCH_ASSOC);
+
     
-        $query = "INSERT INTO orders (num_controle, idestabelecimento, dt_mov, moment_dispatch, cod_iapp, created_at) 
-                  VALUES (:num_controle, :idestabelecimento, :dt_mov, :moment_dispatch, :cod_iapp, :created_at)";
+        $query = "INSERT INTO orders (num_controle, idestabelecimento, dt_mov, moment_dispatch, cod_iapp, created_at,nome_loja) 
+                  VALUES (:num_controle, :idestabelecimento, :dt_mov, :moment_dispatch, :cod_iapp, :created_at ,:nome_loja)";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':num_controle', $order['num_controle']);
         $stmt->bindParam(':idestabelecimento', $order['idestabelecimento']);
         $stmt->bindParam(':dt_mov', $order['dt_mov']);
         $stmt->bindParam(':moment_dispatch', $order['moment_dispatch']);
         $stmt->bindParam(':cod_iapp', $order['cod_iapp']);
-        $stmt->bindParam(':created_at', $order['created_at']);
+        $stmt->bindParam(':created_at', $timestamp);
+        $stmt->bindParam(':nome_loja', $estabelecimento['nome_loja']);
     
         if ($stmt->execute()) {
             return array(["message" => "Order created successfully."]);
@@ -29,8 +40,11 @@ class OrderController {
     public static function readOrders() {
         global $pdo;
 
-        $query = "SELECT * FROM orders";
+        $timestamp = date('Y-m-d'); 
+
+        $query = "SELECT * FROM orders where dt_mov = :dt_mov";
         $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':dt_mov', $timestamp);
         $stmt->execute();
         $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return ($orders);
@@ -46,7 +60,7 @@ class OrderController {
         $stmt->bindParam(':idestabelecimento', $order['idestabelecimento']);
         $stmt->bindParam(':dt_mov', $order['dt_mov']);
         $stmt->bindParam(':moment_dispatch', $order['moment_dispatch']);
-        $stmt->bindParam(':created_at', $order['created_at']);
+        $stmt->bindParam(':created_at', $timestamp);
         $stmt->bindParam(':cod_iapp', $cod_iapp);
 
         if ($stmt->execute()) {
