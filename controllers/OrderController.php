@@ -10,11 +10,6 @@ class OrderController {
         global $pdo;
 
         $timestamp = date('Y-m-d H:i:s'); 
-<<<<<<< HEAD
-    
-        $query = "INSERT INTO orders (num_controle, dt_mov, cod_iapp, created_at,status_entrega) 
-                  VALUES (:num_controle,:dt_mov, :cod_iapp, :created_at,:status_entrega)";
-=======
 
         $queryEstabelecimento = "SELECT * FROM estabelecimento WHERE idestabelecimento = :idestabelecimento";
         $stmtEstabelecimento = $pdo->prepare($queryEstabelecimento);
@@ -25,7 +20,6 @@ class OrderController {
     
         $query = "INSERT INTO orders (num_controle, idestabelecimento, dt_mov, moment_dispatch, cod_iapp, created_at,nome_loja) 
                   VALUES (:num_controle, :idestabelecimento, :dt_mov, :moment_dispatch, :cod_iapp, :created_at ,:nome_loja)";
->>>>>>> parent of ceaa7ff (add creadte order new)
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':num_controle', $order['num_controle']);
         $stmt->bindParam(':idestabelecimento', $order['idestabelecimento']);
