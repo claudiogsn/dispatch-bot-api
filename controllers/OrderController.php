@@ -8,26 +8,15 @@ class OrderController {
 
     public static function createOrder($order) {
         global $pdo;
-
-        $timestamp = date('Y-m-d H:i:s'); 
-
-        $queryEstabelecimento = "SELECT * FROM estabelecimento WHERE idestabelecimento = :idestabelecimento";
-        $stmtEstabelecimento = $pdo->prepare($queryEstabelecimento);
-        $stmtEstabelecimento->bindParam(':idestabelecimento', $order['idestabelecimento']);
-        $stmtEstabelecimento->execute();
-        $estabelecimento = $stmtEstabelecimento->fetch(PDO::FETCH_ASSOC);
-
     
-        $query = "INSERT INTO orders (num_controle, idestabelecimento, dt_mov, moment_dispatch, cod_iapp, created_at,nome_loja) 
-                  VALUES (:num_controle, :idestabelecimento, :dt_mov, :moment_dispatch, :cod_iapp, :created_at ,:nome_loja)";
+        $query = "INSERT INTO orders (num_controle, dt_mov, cod_ipp, created_at,status_entrega) 
+                  VALUES (:num_controle,:dt_mov, :cod_iapp, :created_at,:status_entrega)";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':num_controle', $order['num_controle']);
-        $stmt->bindParam(':idestabelecimento', $order['idestabelecimento']);
         $stmt->bindParam(':dt_mov', $order['dt_mov']);
-        $stmt->bindParam(':moment_dispatch', $order['moment_dispatch']);
         $stmt->bindParam(':cod_iapp', $order['cod_iapp']);
         $stmt->bindParam(':created_at', $timestamp);
-        $stmt->bindParam(':nome_loja', $estabelecimento['nome_loja']);
+       $stmt->bindParam(':status_entrega', $order['status_entrega']);
     
         if ($stmt->execute()) {
             return array(["message" => "Order created successfully."]);
@@ -94,11 +83,14 @@ class OrderController {
         if ($stmt->execute()) {
             $order = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($order) {
+                http_response_code(200);
                 return ($order);
             } else {
+                http_response_code(404);
                 return array(["message" => "Order not found."]);
             }
         } else {
+            http_response_code(400);
             return array(["message" => "Failed to retrieve order."]);
         }
     }
@@ -109,11 +101,19 @@ class OrderController {
         $query = "SELECT * FROM orders WHERE cod_iapp = :cod_iapp";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':cod_iapp', $cod_iapp);
-        $stmt->execute();
-
-        $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        return $orders;
+        if ($stmt->execute()) {
+            $order = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($order) {
+                http_response_code(200);
+                return ($order);
+            } else {
+                http_response_code(404);
+                return array(["message" => "Order not found."]);
+            }
+        } else {
+            http_response_code(400);
+            return array(["message" => "Failed to retrieve order."]);
+        }
     }
 
     public static function verifyDispatch($cod_iapp) {
@@ -127,6 +127,51 @@ class OrderController {
         $count = $stmt->fetchColumn();
 
         return ($count > 0);
+    }
+
+    public static function verifyDone($cod_iapp) {
+        global $pdo;
+
+        $query = "SELECT COUNT(*) FROM orders WHERE cod_iapp = :cod_iapp and moment_done is not null";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':cod_iapp', $cod_iapp);
+        $stmt->execute();
+
+        $count = $stmt->fetchColumn();
+
+        return ($count > 0);
+    }
+
+    public static function setOrderDispatched($cod_iapp,$id_loja,$nome_loja) {
+        global $pdo;
+        $timestamp = date('Y-m-d H:i:s'); 
+
+        $query = "UPDATE orders SET moment_dispatch = :moment_dispatch,status_entrega = 5, id_loja = :id_loja, nome_loja = :nome_loja WHERE cod_iapp = :cod_iapp";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':moment_dispatch', $timestamp);
+        $stmt->bindParam(':cod_iapp', $cod_iapp);
+        $stmt->bindParam(':id_loja', $id_loja);
+        $stmt->bindParam(':nome_loja', $nome_loja);
+        if ($stmt->execute()) {
+            return array(["message" => "Order Dispatched successfully."]);
+        } else {
+            return array(["message" => "Failed to update order."]);
+        }
+    }
+
+    public static function setOrderDone($cod_iapp) {
+        global $pdo;
+        $timestamp = date('Y-m-d H:i:s'); 
+
+        $query = "UPDATE orders SET moment_done = :moment_done,status_entrega = 9 WHERE cod_iapp = :cod_iapp";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':moment_dispatch', $timestamp);
+        $stmt->bindParam(':cod_iapp', $cod_iapp);
+        if ($stmt->execute()) {
+            return array(["message" => "Order Done successfully."]);
+        } else {
+            return array(["message" => "Failed to update order."]);
+        }
     }
 
 }
