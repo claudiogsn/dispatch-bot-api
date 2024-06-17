@@ -9,7 +9,7 @@ class OrderController {
     public static function createOrder($order) {
         global $pdo;
     
-        $query = "INSERT INTO orders (num_controle, dt_mov, cod_ipp, created_at,status_entrega) 
+        $query = "INSERT INTO orders (num_controle, dt_mov, cod_iapp, created_at,status_entrega) 
                   VALUES (:num_controle,:dt_mov, :cod_iapp, :created_at,:status_entrega)";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':num_controle', $order['num_controle']);
