@@ -42,19 +42,10 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'getOrderByCodIapp':
                 $response = OrderController::getOrderByCodIapp($requestData['cod_iapp']);
                 break;
-            case 'verifyDispatch':
-                    $response = OrderController::verifyDispatch($requestData['cod_iapp']);
-                break;
-            case 'verifyDone':
-                    $response = OrderController::verifyDone($requestData['cod_iapp']);
-                break;
-            case 'setOrderDone':
-                $response = OrderController::setOrderDone($requestData['cod_iapp']);
-                break;
-            case 'setOrderDispatched':
-                $response = OrderController::setOrderDispatched($requestData['cod_iapp']);
-                break;
 
+                case 'verifyDispatch':
+                    $response = OrderController::verifyDispatch($requestData['cod_iapp']);
+                    break;
             
 
             // Métodos para LogController
