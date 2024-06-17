@@ -22,6 +22,9 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'getEstabelecimentoByCnpj':
                 $response = EstabelecimentoController::getEstabelecimentoByCnpj($requestData['cnpj'], $requestData['token']);
                 break;
+            case 'createEstabelecimento':
+                $response = EstabelecimentoController::createEstabelecimento($requestData);
+                break;
 
             // Métodos para OrderController
             case 'createOrder':
