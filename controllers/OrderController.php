@@ -8,6 +8,8 @@ class OrderController {
 
     public static function createOrder($order) {
         global $pdo;
+
+        $timestamp = date('Y-m-d H:i:s'); 
     
         $query = "INSERT INTO orders (num_controle, dt_mov, cod_iapp, created_at,status_entrega) 
                   VALUES (:num_controle,:dt_mov, :cod_iapp, :created_at,:status_entrega)";
