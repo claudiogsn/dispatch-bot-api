@@ -5,6 +5,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once 'controllers/EstabelecimentoController.php';
 require_once 'controllers/OrderController.php';
 require_once 'controllers/LogController.php';
+require_once 'controllers/OrdersDeliveryController.php';
 
 $json = file_get_contents('php://input');
 $data = json_decode($json, true);
@@ -45,12 +46,10 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'getOrderByCodIapp':
                 $response = OrderController::getOrderByCodIapp($requestData['cod_iapp']);
                 break;
-
-                case 'verifyDispatch':
-                    $response = OrderController::verifyDispatch($requestData['cod_iapp']);
-                    break;
+            case 'verifyDispatch':
+                $response = OrderController::verifyDispatch($requestData['cod_iapp']);
+                break;
             
-
             // Métodos para LogController
             case 'addLog':
                 $response = LogController::addLog($requestData['id_loja'], $requestData['nome_loja'], $requestData['tipo_log'], $requestData['mensagem']);
@@ -60,6 +59,39 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'getLogsByType':
                 $response = LogController::getLogsByType($requestData['tipo_log']);
+                break;
+
+            // Novos métodos para OrdersDeliveryController
+            case 'createOrderDelivery':
+                $response = OrdersDeliveryController::createOrderDelivery($requestData);
+                break;
+            case 'getAllOrderDeliveries':
+                $response = OrdersDeliveryController::getAllOrderDeliveries();
+                break;
+            case 'getOrderDeliveryById':
+                $response = OrdersDeliveryController::getOrderDeliveryById($requestData['id']);
+                break;
+            case 'updateOrderDeliveryByCompositeKey':
+                if (isset($requestData['cnpj'], $requestData['hash'], $requestData['num_controle'], $requestData['update_data'])) {
+                    $response = OrdersDeliveryController::updateOrderDeliveryByCompositeKey(
+                        $requestData['cnpj'], $requestData['hash'], $requestData['num_controle'], $requestData['update_data']
+                    );
+                } else {
+                    throw new Exception("Missing required fields for updateOrderDeliveryByCompositeKey.");
+                }
+                break;
+            case 'deleteOrderDelivery':
+                $response = OrdersDeliveryController::deleteOrderDelivery($requestData['id']);
+                break;
+                
+            case 'getOrderDeliveryByCompositeKey':
+                if (isset($requestData['cnpj'], $requestData['hash'], $requestData['num_controle'])) {
+                    $response = OrdersDeliveryController::getOrderDeliveryByCompositeKey(
+                        $requestData['cnpj'], $requestData['hash'], $requestData['num_controle']
+                    );
+                } else {
+                    throw new Exception("Missing required fields for getOrderDeliveryByCompositeKey.");
+                }
                 break;
 
             default:

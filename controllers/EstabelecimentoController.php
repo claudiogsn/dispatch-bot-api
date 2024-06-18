@@ -44,7 +44,7 @@ class EstabelecimentoController {
         $stmt->bindParam(':nome_loja', $data['nome_loja']);
         $stmt->bindParam(':client_id', $data['client_id']);
         $stmt->bindParam(':client_secret', $data['client_secret']);
-        $stmt->bindParam(':status', $data['status']);
+        $stmt->bindParam(':status', "S");
 
         if ($stmt->execute()) {
             return ['success' => true, 'message' => 'Estabelecimento criado com sucesso.'];
