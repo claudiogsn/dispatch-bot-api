@@ -126,15 +126,24 @@ class OrdersDeliveryController {
 
     public static function getOrderDeliveryByCompositeKey($cnpj, $hash, $num_controle) {
         global $pdo;
-
+    
         $query = "SELECT * FROM orders_delivery WHERE cnpj = :cnpj AND hash = :hash AND num_controle = :num_controle";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':cnpj', $cnpj);
         $stmt->bindParam(':hash', $hash);
         $stmt->bindParam(':num_controle', $num_controle);
         $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        if (!$result) {
+            http_response_code(404);
+            return false;
+        }
+    
+        return $result;
     }
+    
 }
 
 
