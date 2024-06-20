@@ -160,8 +160,6 @@ class OrdersDeliveryController {
             return array('error' => 'Invalid date format.');
         }
 
-        if
-
         $query = "SELECT * FROM orders_delivery WHERE hora_abertura >= :start AND hora_abertura <= :end";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':start', $start);
