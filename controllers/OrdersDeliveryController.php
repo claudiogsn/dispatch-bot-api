@@ -143,6 +143,33 @@ class OrdersDeliveryController {
     
         return $result;
     }
+
+    public static funciton getOrdersDeliveryByPeriod($start, $end) {
+        global $pdo;
+
+        if (!$start || !$end) {
+
+            return array('error' => 'Missing required fields for getOrdersByPeriod.');
+        }
+
+        if ($start > $end) {
+            return array('error' => 'Invalid date range.');
+        }
+
+        if (strtotime($start) === false || strtotime($end) === false) {
+            return array('error' => 'Invalid date format.');
+        }
+
+        if
+
+        $query = "SELECT * FROM orders_delivery WHERE hora_abertura >= :start AND hora_abertura <= :end";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':start', $start);
+        $stmt->bindParam(':end', $end);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
     
 }
 

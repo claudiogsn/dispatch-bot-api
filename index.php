@@ -77,6 +77,7 @@ if (isset($data['method']) && isset($data['data'])) {
                         $requestData['cnpj'], $requestData['hash'], $requestData['num_controle'], $requestData['update_data']
                     );
                 } else {
+                    http_response_code(400);
                     throw new Exception("Missing required fields for updateOrderDeliveryByCompositeKey.");
                 }
                 break;
@@ -90,7 +91,16 @@ if (isset($data['method']) && isset($data['data'])) {
                         $requestData['cnpj'], $requestData['hash'], $requestData['num_controle']
                     );
                 } else {
+                    http_response_code(400);
                     throw new Exception("Missing required fields for getOrderDeliveryByCompositeKey.");
+                }
+                break;
+            case 'getOrdersDeliveryByPeriod':
+                if (isset($requestData['start'], $requestData['end'])) {
+                    $response = OrdersDeliveryController::getOrdersDeliveryByPeriod($requestData['start'], $requestData['end']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required fields for getOrdersDeliveryByPeriod.");
                 }
                 break;
 
