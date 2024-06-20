@@ -144,7 +144,7 @@ class OrdersDeliveryController {
         return $result;
     }
 
-    public static funciton getOrdersDeliveryByPeriod($start, $end) {
+    public static function getOrdersDeliveryByPeriod($start, $end) {
         global $pdo;
 
         if (!$start || !$end) {

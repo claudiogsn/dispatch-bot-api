@@ -129,4 +129,17 @@ class OrderController {
         return ($count > 0);
     }
 
+    public static function verifyDone($cod_iapp) {
+        global $pdo;
+
+        $query = "SELECT COUNT(*) FROM orders WHERE cod_iapp = :cod_iapp and moment_done is not null";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':cod_iapp', $cod_iapp);
+        $stmt->execute();
+
+        $count = $stmt->fetchColumn();
+
+        return ($count > 0);
+    }
+
 }
