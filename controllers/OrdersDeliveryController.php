@@ -200,7 +200,7 @@ class OrdersDeliveryController {
             if ($hora_saida === false) {
                 return array('error' => 'Invalid date format for hora_saida.');
             }
-            $response['dispatch_time'] = ($hora_saida - $hora_abertura) / 60;
+            $response['dispatch_time'] = ($tempo_preparo - $hora_saida) / 60;
         } else {
             $response['dispatch_time'] = 'Order has not been dispatched yet.';
         }
