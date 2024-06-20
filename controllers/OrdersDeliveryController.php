@@ -200,8 +200,7 @@ class OrdersDeliveryController {
             if ($hora_saida === false) {
                 return array('error' => 'Invalid date format for hora_saida.');
             }
-            $response['dispatch_time'] = $hora_saida - $hora_abertura;
-        } else {
+            $response['dispatch_time'] = ($hora_saida - $hora_abertura) / 60; 
             $response['dispatch_time'] = 'Order has not been dispatched yet.';
         }
     
@@ -209,13 +208,14 @@ class OrdersDeliveryController {
             if ($tempo_preparo === false) {
                 return array('error' => 'Invalid date format for tempo_preparo.');
             }
-            $response['preparation_time'] = $tempo_preparo - $hora_abertura;
+            $response['preparation_time'] = ($tempo_preparo - $hora_abertura) / 60; 
         } else {
             $response['preparation_time'] = 'Order is still in preparation.';
         }
     
         return $response;
     }
+    
     
     
     
