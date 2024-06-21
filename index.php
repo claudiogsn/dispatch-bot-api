@@ -1,4 +1,19 @@
 <?php
+// Permitir acesso de qualquer origem
+header("Access-Control-Allow-Origin: *");
+
+// Permitir métodos específicos
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+
+// Permitir cabeçalhos específicos
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+
+// Responder às solicitações de preflight
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    // Responder à solicitação de preflight com os cabeçalhos adequados
+    header("HTTP/1.1 200 OK");
+    exit();
+}
 date_default_timezone_set('America/Rio_Branco');
 header('Content-Type: application/json; charset=utf-8');
 
@@ -113,6 +128,15 @@ if (isset($data['method']) && isset($data['data'])) {
                 } else {
                     http_response_code(400);
                     throw new Exception("Missing required fields for calculateTimesByCompositeKey.");
+                }
+                break;
+
+            case 'getOrdersChartData':
+                if (isset($requestData['start'], $requestData['end'])) {
+                    $response = OrdersDeliveryController::getOrdersChartData($requestData['start'], $requestData['end']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required fields for getOrdersChartData.");
                 }
                 break;
 

@@ -160,7 +160,7 @@ class OrdersDeliveryController {
             return array('error' => 'Invalid date format.');
         }
 
-        $query = "SELECT * FROM orders_delivery WHERE hora_abertura >= :start AND hora_abertura <= :end";
+        $query = "SELECT * FROM orders_delivery WHERE status in (1,-1,2) and hora_abertura >= :start AND hora_abertura <= :end";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':start', $start);
         $stmt->bindParam(':end', $end);
@@ -218,10 +218,106 @@ class OrdersDeliveryController {
     
         return $response;
     }
-    
-    
-    
-    
+
+    public static function getOrdersDeliveryByPeriodMock($start, $end) {
+        header('Content-Type: application/json');
+
+        // Caminho para o arquivo JSON
+        $jsonFilePath = __DIR__ . '/../data/data.json';
+
+        // Verifica se o arquivo existe
+        if (!file_exists($jsonFilePath)) {
+            http_response_code(404);
+            echo json_encode(array('error' => 'JSON file not found.'));
+            exit;
+        }
+
+        // Lê o conteúdo do arquivo JSON
+        $jsonContent = file_get_contents($jsonFilePath);
+
+        $jsonArray = json_decode($jsonContent, true);
+
+        // Verifica se a leitura do arquivo foi bem-sucedida
+        if ($jsonContent === false) {
+            http_response_code(500);
+            echo json_encode(array('error' => 'Failed to read JSON file.'));
+            exit;
+        }
+
+        // Retorna o conteúdo do JSON
+        return $jsonArray;
+    }
+
+    public static function getOrdersChartData($start, $end) {
+        global $pdo;
+
+        // Validação dos parâmetros de entrada
+        if (!$start || !$end) {
+            http_response_code(400);
+            return array('error' => 'Missing required fields: start and end.');
+        }
+
+        if (strtotime($start) === false || strtotime($end) === false) {
+            http_response_code(400);
+            return array('error' => 'Invalid date format.');
+        }
+
+        if ($start > $end) {
+            http_response_code(400);
+            return array('error' => 'Start date must be before end date.');
+        }
+
+        // Consulta para buscar os dados dos pedidos no período especificado
+        $query = "
+        SELECT o.cnpj, o.hora_abertura, e.nome_fantasia 
+        FROM orders_delivery o
+        JOIN estabelecimento e ON o.cnpj = e.cnpj
+        WHERE o.hora_abertura BETWEEN :start AND :end
+    ";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':start', $start);
+        $stmt->bindParam(':end', $end);
+        $stmt->execute();
+        $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Inicializa os contadores de pedidos por hora e por CNPJ
+        $dataByCNPJ = [];
+
+        foreach ($orders as $order) {
+            $cnpj = $order['cnpj'];
+            $nomeFantasia = $order['nome_fantasia'];
+            $horaAbertura = strtotime($order['hora_abertura']);
+            $hour = (int) date('H', $horaAbertura);
+
+            // Contar pedidos por CNPJ e hora de abertura
+            if ($hour >= 12 && $hour < 24) {
+                $index = $hour - 12;
+
+                if (!isset($dataByCNPJ[$nomeFantasia])) {
+                    $dataByCNPJ[$nomeFantasia] = array_fill(0, 12, 0);
+                }
+                $dataByCNPJ[$nomeFantasia][$index]++;
+            }
+        }
+
+        // Formatação dos dados para o gráfico
+        $series = [];
+        foreach ($dataByCNPJ as $nomeFantasia => $data) {
+            $series[] = [
+                'name' => $nomeFantasia,
+                'data' => $data
+            ];
+        }
+
+        return $series;
+    }
+
+
+
+
+
+
+
 }
 
 
