@@ -119,7 +119,16 @@ if (isset($data['method']) && isset($data['data'])) {
                     throw new Exception("Missing required fields for getOrdersDeliveryByPeriod.");
                 }
                 break;
-            
+
+            case 'getOrdersDeliveryByPeriodMock':
+                if (isset($requestData['start'], $requestData['end'])) {
+                    $response = OrdersDeliveryController::getOrdersDeliveryByPeriodMock($requestData['start'], $requestData['end']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required fields for getOrdersDeliveryByPeriod.");
+                }
+                break;
+
             case 'calculateTimesByCompositeKey':
                 if (isset($requestData['cnpj'], $requestData['hash'], $requestData['num_controle'])) {
                     $response = OrdersDeliveryController::calculateTimesByCompositeKey(

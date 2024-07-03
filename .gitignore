@@ -1,2 +1,5 @@
 
 database/comunication.ini
+database/comunication.ini
+*.ini
+/database
