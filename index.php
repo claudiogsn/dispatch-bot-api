@@ -21,6 +21,7 @@ require_once 'controllers/EstabelecimentoController.php';
 require_once 'controllers/OrderController.php';
 require_once 'controllers/LogController.php';
 require_once 'controllers/OrdersDeliveryController.php';
+require_once 'controllers/ClientOrders.php';
 
 $json = file_get_contents('php://input');
 $data = json_decode($json, true);
@@ -148,6 +149,17 @@ if (isset($data['method']) && isset($data['data'])) {
                     throw new Exception("Missing required fields for getOrdersChartData.");
                 }
                 break;
+                
+
+            case 'getOrders':
+                if (isset($requestData['identificador'], $requestData['integracao'])) {
+                    $response = ClientOrders::getOrders($requestData['identificador'], $requestData['integracao']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required fields for getOrders.");
+                }
+                break;
+
 
             default:
                 http_response_code(405);
