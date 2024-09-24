@@ -9,10 +9,8 @@ class ClientOrders {
     public static function getOrders($idenficador, $integracao) {
         global $pdo;
 
-        //$dataAtual = date('Y-m-d');
-        $dataAtual = '2024-09-23';
+        $dataAtual = date('Y-m-d');
 
-       
 
         if ($integracao === 'HUB-IFOOD') {
 
