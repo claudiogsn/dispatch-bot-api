@@ -1,8 +1,23 @@
 <?php
 require_once __DIR__ . '/../database/db.php'; // Caminho para a conexão com o banco de dados
+require_once __DIR__ .'/../controllers/LogglyLogger.php';
 global $pdo;
+$logger = new LogglyLogger();
 
-$api_url = "https://cloud.taximachine.com.br/api/integracao/solicitacao?data_hora_solicitacao_min=2024-11-05T00:00:00.000Z&data_hora_solicitacao_max=2024-11-05T23:59:59.999Z";
+// Define o timezone como "America/Rio_Branco"
+$timezone = new DateTimeZone('America/Rio_Branco');
+
+// Calcula o horário atual e o horário de duas horas atrás em "America/Rio_Branco"
+$data_hora_atual = new DateTime('now', $timezone);
+$data_hora_menos_2 = (clone $data_hora_atual)->modify('-2 hours');
+
+// Formata as datas para o formato ISO 8601 exigido pela API
+$data_hora_atual_formatada = $data_hora_atual->format('Y-m-d\TH:i:s.v\Z');
+$data_hora_menos_2_formatada = $data_hora_menos_2->format('Y-m-d\TH:i:s.v\Z');
+
+// Monta a URL da API com as datas dinâmicas
+$api_url = "https://cloud.taximachine.com.br/api/integracao/solicitacao?data_hora_solicitacao_min=$data_hora_menos_2_formatada&data_hora_solicitacao_max=$data_hora_atual_formatada";
+
 $api_key = "mch_api_h2CcjBndaZsjZGgluznxn5FA";
 $username = "deckchurrasquin01@vemprodeck.com.br";
 $password = "123";
@@ -186,14 +201,17 @@ if (isset($data['success']) && $data['success'] === true && isset($data['respons
         // Commit da transação
         $pdo->commit();
         sendTelegramMessage("Solicitação e paradas inseridas com sucesso!");
+        $logger->sendLog("Dados inseridos no banco de dados com sucesso");
 
     } catch (Exception $e) {
         // Rollback em caso de erro
         $pdo->rollBack();
         sendTelegramMessage("Erro ao inserir solicitação: " . $e->getMessage());
+        $logger->sendLog("Erro ao inserir solicitação: " . $e->getMessage(), 'ERROR');
     }
 } else {
     sendTelegramMessage("Erro na resposta da API.");
+    $logger->sendLog("Erro na resposta da API.", 'ERROR');
 }
 
 // Função para enviar mensagem para o Telegram
