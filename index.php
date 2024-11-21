@@ -160,6 +160,15 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+                case 'getDeliveryInfoByNumeroParada':
+                if (isset($requestData['numero_parada'])) {
+                    $response = OrdersDeliveryController::getDeliveryInfoByNumeroParada($requestData['numero_parada']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required fields for getDeliveryInfoByNumeroParada.");
+                }
+                break;
+
 
             default:
                 http_response_code(405);

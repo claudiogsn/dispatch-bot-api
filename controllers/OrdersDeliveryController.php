@@ -336,6 +336,50 @@ class OrdersDeliveryController {
     }
 
 
+    public static function getDeliveryInfoByNumeroParada($numero_parada) {
+        global $pdo;
+
+        $query = "
+        SELECT 
+            op.endereco, 
+            op.complemento, 
+            op.bairro, 
+            op.cidade, 
+            op.uf, 
+            op.link_rastreio_pedido, 
+            os.nome_taxista, 
+            os.telefone_taxista, 
+            os.veiculo, 
+            os.placa_veiculo, 
+            os.cor_veiculo, 
+            os.data_hora_solicitacao, 
+            os.data_hora_chegada_local 
+        FROM 
+            orders_paradas op
+        LEFT JOIN 
+            orders_solicitacoes os 
+        ON 
+            op.solicitacao_id = os.solicitacao_id
+        WHERE 
+            op.id_parada = :numero_parada
+    ";
+
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':numero_parada', $numero_parada);
+        $stmt->execute();
+
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$result) {
+            http_response_code(404);
+            return ['error' => 'Parada não encontrada.'];
+        }
+
+        return $result;
+    }
+
+
+
 
 
 
