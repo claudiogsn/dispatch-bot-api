@@ -132,21 +132,21 @@ class OrdersDeliveryController {
 
     public static function getOrderDeliveryByCompositeKey($cnpj, $hash, $num_controle) {
         global $pdo;
-    
+
         $query = "SELECT * FROM orders_delivery WHERE cnpj = :cnpj AND hash = :hash AND num_controle = :num_controle";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':cnpj', $cnpj);
         $stmt->bindParam(':hash', $hash);
         $stmt->bindParam(':num_controle', $num_controle);
         $stmt->execute();
-    
+
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
         if (!$result) {
             http_response_code(404);
             return false;
         }
-    
+
         return $result;
     }
 
@@ -193,31 +193,31 @@ class OrdersDeliveryController {
 
     public static function calculateTimesByCompositeKey($cnpj, $hash, $num_controle) {
         global $pdo;
-    
+
         $query = "SELECT hora_abertura, hora_saida, tempo_preparo FROM orders_delivery WHERE cnpj = :cnpj AND hash = :hash AND num_controle = :num_controle";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':cnpj', $cnpj);
         $stmt->bindParam(':hash', $hash);
         $stmt->bindParam(':num_controle', $num_controle);
         $stmt->execute();
-    
+
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
         if (!$result) {
             http_response_code(404);
             return false;
         }
-    
+
         $hora_abertura = strtotime($result['hora_abertura']);
         $hora_saida = ($result['hora_saida'] !== '0000-00-00 00:00:00') ? strtotime($result['hora_saida']) : null;
         $tempo_preparo = ($result['tempo_preparo'] !== '0000-00-00 00:00:00') ? strtotime($result['tempo_preparo']) : null;
-    
+
         if ($hora_abertura === false) {
             return array('error' => 'Invalid date format for hora_abertura.');
         }
-    
+
         $response = array();
-    
+
         if ($hora_saida !== null) {
             if ($hora_saida === false) {
                 return array('error' => 'Invalid date format for hora_saida.');
@@ -226,18 +226,18 @@ class OrdersDeliveryController {
         } else {
             $response['dispatch_time'] = 'Order has not been dispatched yet.';
         }
-    
+
         if ($tempo_preparo !== null) {
             if ($tempo_preparo === false) {
                 return array('error' => 'Invalid date format for tempo_preparo.');
             }
-            $response['preparation_time'] = ($tempo_preparo - $hora_abertura) / 60; 
+            $response['preparation_time'] = ($tempo_preparo - $hora_abertura) / 60;
         } else {
             $response['preparation_time'] = 'Order is still in preparation.';
         }
 
         $response['total_time'] = ($hora_saida - $hora_abertura) / 60;
-    
+
         return $response;
     }
 
