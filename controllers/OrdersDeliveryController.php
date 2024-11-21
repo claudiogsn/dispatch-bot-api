@@ -166,7 +166,23 @@ class OrdersDeliveryController {
             return array('error' => 'Invalid date format.');
         }
 
-        $query = "SELECT * FROM orders_delivery WHERE status in (1,-1,2) and hora_abertura >= :start AND hora_abertura <= :end ORDER BY hora_saida DESC";
+        $query = "SELECT
+            od.*,
+            op.link_rastreio_pedido,
+            op.solicitacao_id,
+            op.id_parada
+        FROM
+            orders_delivery od
+        LEFT JOIN
+            orders_paradas op
+        ON
+            od.cod_iapp = op.numero_pedido
+        WHERE
+            od.status IN (1, -1, 2)
+            AND od.hora_abertura >= :start
+            AND od.hora_abertura <= :end
+        ORDER BY
+            od.hora_saida DESC;";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':start', $start);
         $stmt->bindParam(':end', $end);
