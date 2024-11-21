@@ -40,7 +40,8 @@ $context = stream_context_create($options);
 $response = file_get_contents($api_url, false, $context);
 
 if ($response === FALSE) {
-    sendTelegramMessage("Erro ao consumir a API.");
+    // Exibindo erro na requisição
+    echo "Erro ao consumir a API.";
     exit;
 }
 
@@ -121,6 +122,8 @@ if (isset($data['success']) && $data['success'] === true && isset($data['respons
                     distancia_percorrida_km = VALUES(distancia_percorrida_km)
             ");
 
+            // Exibindo dados antes de inserir
+            echo "Inserindo solicitação ID: $solicitacao_id\n";
 
             $stmt->execute([
                 ':solicitacao_id' => $solicitacao_id,
@@ -159,16 +162,19 @@ if (isset($data['success']) && $data['success'] === true && isset($data['respons
                 $lat = $parada['lat'];
                 $lng = $parada['lng'];
                 $numero_pedido = $parada['numero_pedido'];
-                $link_rastreio_pedido = $parada['link_rastreio_pedido'];
+
+                // Exibindo o ID da parada para debugging
+                echo "Inserindo parada ID: $id_parada, solicitacao_id: $solicitacao_id<br>";
+                echo "Endereço: $endereco, Complemento: $complemento, Bairro: $bairro<br>";
 
                 // Inserir a parada, mantendo o solicitacao_id correto
                 $stmt_parada = $pdo->prepare("
                     INSERT INTO orders_paradas (
-                        id_parada,solicitacao_id, endereco, complemento, bairro, cidade, uf, lat, lng, 
-                        numero_pedido, link_rastreio_pedido
+                        id_parada, solicitacao_id, endereco, complemento, bairro, cidade, uf, lat, lng, 
+                        numero_pedido
                     ) VALUES (
-                        :id_parada,:solicitacao_id, :endereco, :complemento, :bairro, :cidade, :uf, :lat, :lng, 
-                        :numero_pedido, :link_rastreio_pedido
+                        :id_parada, :solicitacao_id, :endereco, :complemento, :bairro, :cidade, :uf, :lat, :lng, 
+                        :numero_pedido
                     ) ON DUPLICATE KEY UPDATE
                         endereco = VALUES(endereco),
                         complemento = VALUES(complemento),
@@ -177,11 +183,9 @@ if (isset($data['success']) && $data['success'] === true && isset($data['respons
                         uf = VALUES(uf),
                         lat = VALUES(lat),
                         lng = VALUES(lng),
-                        numero_pedido = VALUES(numero_pedido),
-                        link_rastreio_pedido = VALUES(link_rastreio_pedido)
-                ");
+                        numero_pedido = VALUES(numero_pedido)");
 
-
+                // Executar o statement
                 $stmt_parada->execute([
                     ':id_parada' => $id_parada,
                     ':solicitacao_id' => $solicitacao_id, // Aqui usamos o solicitacao_id da API
@@ -192,37 +196,25 @@ if (isset($data['success']) && $data['success'] === true && isset($data['respons
                     ':uf' => $uf,
                     ':lat' => $lat,
                     ':lng' => $lng,
-                    ':numero_pedido' => $numero_pedido,
-                    ':link_rastreio_pedido' => $link_rastreio_pedido
+                    ':numero_pedido' => $numero_pedido
                 ]);
 
+                // Exibe o último ID inserido
                 $parada_id_inserted = $pdo->lastInsertId();
-                sendTelegramMessage("DECK BURGER & CHURRAS - Parada inserida com sucesso. ID da parada: $parada_id_inserted");
+                echo "Parada inserida com sucesso. ID da parada: $parada_id_inserted<br>";
             }
-
         }
 
         // Commit da transação
         $pdo->commit();
-        sendTelegramMessage("DECK BURGER & CHURRAS - Solicitação e paradas inseridas com sucesso!");
-        $logger->sendLog("DECK BURGER & CHURRAS - Dados inseridos no banco de dados com sucesso");
 
     } catch (Exception $e) {
-        // Rollback em caso de erro
+        // Caso ocorra algum erro, rollback da transação
         $pdo->rollBack();
-        sendTelegramMessage("Erro ao inserir solicitação: " . $e->getMessage());
-        $logger->sendLog("Erro ao inserir solicitação: " . $e->getMessage(), 'ERROR');
+        echo "Erro na inserção: " . $e->getMessage();
     }
 } else {
-    sendTelegramMessage("Erro na resposta da API.");
-    $logger->sendLog("Erro na resposta da API.", 'ERROR');
+    echo "Dados inválidos ou resposta não encontrada na API.";
 }
 
-// Função para enviar mensagem para o Telegram
-function sendTelegramMessage($message) {
-    $bot_token = "7893556411:AAHvTOjkRFcGc8cK8GORebWhXbXtxhcpr0k";
-    $chat_id = "2084334931"; // Seu ID no Telegram
-    $url = "https://api.telegram.org/bot$bot_token/sendMessage?chat_id=$chat_id&text=" . urlencode($message);
-    file_get_contents($url);
-}
 ?>
