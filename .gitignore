@@ -1,5 +1,7 @@
+# Ignorar arquivos específicos
+database/communication.ini
+database/log.ini
+database/sample.ini
 
-database/comunication.ini
-database/comunication.ini
+# Ignorar todos os arquivos .ini
 *.ini
-/database
