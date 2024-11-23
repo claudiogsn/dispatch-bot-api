@@ -9,18 +9,26 @@ date_default_timezone_set('America/Rio_Branco');
 // Função para consultar o banco e retornar os solicitacao_id sem link de rastreio
 function fetchSolicitacoesSemRastreio($pdo) {
     try {
-        echo "Consultando solicitações sem link de rastreio...\n";
+        echo "Consultando solicitações para o DECK SUSHI sem link de rastreio das últimas 2 horas...\n";
+
+        // Calcular o horário de 2 horas atrás em America/Rio_Branco
+        $horaAtual = new DateTime('now', new DateTimeZone('America/Rio_Branco')); // Timezone configurado
+        $horaLimite = $horaAtual->modify('-2 hours')->format('Y-m-d H:i:s');
+
         $sql = "
             SELECT s.solicitacao_id
             FROM orders_solicitacoes s
             JOIN orders_paradas p ON s.solicitacao_id = p.solicitacao_id
-            WHERE p.link_rastreio_pedido IS NULL AND s.status_solicitacao = 'E'
+            WHERE p.link_rastreio_pedido IS NULL
+            AND s.empresa_id = 42557
+            AND s.data_hora_solicitacao >= :hora_limite
             GROUP BY s.solicitacao_id
         ";
 
         $stmt = $pdo->prepare($sql);
-        $stmt->execute();
+        $stmt->execute([':hora_limite' => $horaLimite]);
         $result = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
         echo count($result) . " solicitações encontradas.\n";
         return $result;
     } catch (PDOException $e) {
