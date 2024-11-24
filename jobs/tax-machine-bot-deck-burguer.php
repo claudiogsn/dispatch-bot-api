@@ -19,7 +19,7 @@ $data_hora_atual_formatada = $data_hora_atual->format('Y-m-d\TH:i:s.v\Z');
 $data_hora_menos_2_formatada = $data_hora_menos_2->format('Y-m-d\TH:i:s.v\Z');
 
 // Monta a URL da API com as datas dinâmicas
-$api_url = "https://cloud.taximachine.com.br/api/integracao/solicitacao?empresa_id=41815&data_hora_solicitacao_min=$data_hora_menos_2_formatada&data_hora_solicitacao_max=$data_hora_atual_formatada";
+$api_url = "https://cloud.taximachine.com.br/api/integracao/solicitacao?status_solicitacao=e&empresa_id=41815&data_hora_solicitacao_min=$data_hora_menos_2_formatada&data_hora_solicitacao_max=$data_hora_atual_formatada";
 
 $api_key = "mch_api_h2CcjBndaZsjZGgluznxn5FA";
 $username = "ti@vemprodeck.com.br";
@@ -38,6 +38,7 @@ $options = [
 
 $context = stream_context_create($options);
 $response = file_get_contents($api_url, false, $context);
+echo $api_url;
 
 if ($response === FALSE) {
     // Exibindo erro na requisição

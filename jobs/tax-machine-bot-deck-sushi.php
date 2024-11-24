@@ -19,7 +19,7 @@ $data_hora_atual_formatada = $data_hora_atual->format('Y-m-d\TH:i:s.v\Z');
 $data_hora_menos_2_formatada = $data_hora_menos_2->format('Y-m-d\TH:i:s.v\Z');
 
 // Monta a URL da API com as datas dinâmicas
-$api_url = "https://cloud.taximachine.com.br/api/integracao/solicitacao?empresa_id=42557&data_hora_solicitacao_min=$data_hora_menos_2_formatada&data_hora_solicitacao_max=$data_hora_atual_formatada";
+$api_url = "https://cloud.taximachine.com.br/api/integracao/solicitacao?status_solicitacao=e&empresa_id=42557&data_hora_solicitacao_min=$data_hora_menos_2_formatada&data_hora_solicitacao_max=$data_hora_atual_formatada";
 echo "URL da API: " . $api_url . "<br>";
 
 $api_key = "mch_api_h2CcjBndaZsjZGgluznxn5FA";
