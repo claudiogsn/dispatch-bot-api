@@ -7,8 +7,8 @@ class OrdersDeliveryController {
     public static function createOrderDelivery($data) {
         global $pdo;
 
-        $query = "INSERT INTO orders_delivery (cnpj, hash, num_controle, status, modo_de_conta, identificador_conta, hora_abertura, hora_saida, intg_tipo, cod_iapp, tempo_preparo, status_pedido, quantidade_producao, quantidade_produzida)
-                  VALUES (:cnpj, :hash, :num_controle, :status, :modo_de_conta, :identificador_conta, :hora_abertura, :hora_saida, :intg_tipo, :cod_iapp, :tempo_preparo, :status_pedido, :quantidade_producao, :quantidade_produzida)";
+        $query = "INSERT INTO orders_delivery (cnpj, hash, num_controle, status, modo_de_conta, identificador_conta, hora_abertura, hora_saida, intg_tipo, cod_iapp, tempo_preparo, status_pedido, quantidade_producao, quantidade_produzida, tipo_entrega)
+                  VALUES (:cnpj, :hash, :num_controle, :status, :modo_de_conta, :identificador_conta, :hora_abertura, :hora_saida, :intg_tipo, :cod_iapp, :tempo_preparo, :status_pedido, :quantidade_producao, :quantidade_produzida, :tipo_entrega)";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':cnpj', $data['cnpj']);
         $stmt->bindParam(':hash', $data['hash']);
@@ -24,6 +24,7 @@ class OrdersDeliveryController {
         $stmt->bindParam(':status_pedido', $data['status_pedido']);
         $stmt->bindParam(':quantidade_producao', $data['quantidade_producao']);
         $stmt->bindParam(':quantidade_produzida', $data['quantidade_produzida']);
+        $stmt->bindParam(':tipo_entrega', $data['tipo_entrega']);
 
         return $stmt->execute();
     }
@@ -110,7 +111,7 @@ class OrdersDeliveryController {
                         status = :status, modo_de_conta = :modo_de_conta, identificador_conta = :identificador_conta, 
                         hora_abertura = :hora_abertura, hora_saida = :hora_saida, intg_tipo = :intg_tipo, 
                         cod_iapp = :cod_iapp, tempo_preparo = :tempo_preparo, status_pedido = :status_pedido, 
-                        quantidade_producao = :quantidade_producao, quantidade_produzida = :quantidade_produzida
+                        quantidade_producao = :quantidade_producao, quantidade_produzida = :quantidade_produzida,tipo_entrega = :tipo_entrega
                         WHERE id = :id";
         $stmtUpdate = $pdo->prepare($queryUpdate);
         $stmtUpdate->bindParam(':id', $id);
@@ -125,6 +126,8 @@ class OrdersDeliveryController {
         $stmtUpdate->bindParam(':status_pedido', $data['status_pedido']);
         $stmtUpdate->bindParam(':quantidade_producao', $data['quantidade_producao']);
         $stmtUpdate->bindParam(':quantidade_produzida', $data['quantidade_produzida']);
+        $stmtUpdate->bindParam(':tipo_entrega', $data['tipo_entrega']);
+
 
 
         return $stmtUpdate->execute();
