@@ -381,6 +381,19 @@ class OrdersDeliveryController {
         return $result;
     }
 
+    public static function changeStatusPedido ($cnpj, $hash, $num_controle, $status_pedido) {
+        global $pdo;
+
+        $query = "UPDATE orders_delivery SET status_pedido = :status_pedido WHERE cnpj = :cnpj AND hash = :hash AND num_controle = :num_controle";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':cnpj', $cnpj);
+        $stmt->bindParam(':hash', $hash);
+        $stmt->bindParam(':num_controle', $num_controle);
+        $stmt->bindParam(':status_pedido', $status_pedido);
+
+        return $stmt->execute();
+    }
+
 
 
 

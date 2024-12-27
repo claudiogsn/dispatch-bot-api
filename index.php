@@ -169,6 +169,16 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+                case 'changeStatusPedido':
+                if (isset($requestData['cnpj'], $requestData['hash'], $requestData['num_controle'], $requestData['status'])) {
+                    $response = OrdersDeliveryController::changeStatusPedido(
+                        $requestData['cnpj'], $requestData['hash'], $requestData['num_controle'], $requestData['status']
+                    );
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required fields for changeStatusPedido.");
+                }
+
 
             default:
                 http_response_code(405);
