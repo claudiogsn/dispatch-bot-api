@@ -160,7 +160,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
-                case 'getDeliveryInfoByNumeroParada':
+            case 'getDeliveryInfoByNumeroParada':
                 if (isset($requestData['numero_parada'])) {
                     $response = OrdersDeliveryController::getDeliveryInfoByNumeroParada($requestData['numero_parada']);
                 } else {
@@ -169,7 +169,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
-                case 'changeStatusPedido':
+            case 'changeStatusPedido':
                 if (isset($requestData['cnpj'], $requestData['hash'], $requestData['num_controle'], $requestData['status'])) {
                     $response = OrdersDeliveryController::changeStatusPedido(
                         $requestData['cnpj'], $requestData['hash'], $requestData['num_controle'], $requestData['status']
@@ -178,6 +178,7 @@ if (isset($data['method']) && isset($data['data'])) {
                     http_response_code(400);
                     throw new Exception("Missing required fields for changeStatusPedido.");
                 }
+                break;
 
 
             default:
