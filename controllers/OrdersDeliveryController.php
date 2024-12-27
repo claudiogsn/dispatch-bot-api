@@ -94,9 +94,22 @@ class OrdersDeliveryController {
     public static function updateOrderDeliveryByCompositeKey($cnpj, $hash, $num_controle, $data) {
         global $pdo;
 
-        array_map('trim', $data);
+        // Criar log da execução
+        $logFile = __DIR__ . '/updateOrderDelivery.log'; // Caminho do arquivo na mesma pasta
+        $logMessage = "Recebido em " . date('Y-m-d H:i:s') . ":\n" .
+            "CNPJ: $cnpj\n" .
+            "HASH: $hash\n" .
+            "NUM_CONTROLE: $num_controle\n" .
+            "DATA: " . json_encode($data, JSON_PRETTY_PRINT) . "\n\n";
+        file_put_contents($logFile, $logMessage, FILE_APPEND);
 
-        // recuperar o ID do pedido
+        // Aplicar trim a todos os elementos do array $data
+        $data = array_map('trim', $data);
+
+        // Log do array após trim
+        file_put_contents($logFile, "Após trim:\n" . json_encode($data, JSON_PRETTY_PRINT) . "\n\n", FILE_APPEND);
+
+        // Recuperar o ID do pedido
         $queryFindId = "SELECT id FROM orders_delivery WHERE cnpj = :cnpj AND hash = :hash AND num_controle = :num_controle";
         $stmt = $pdo->prepare($queryFindId);
         $stmt->bindParam(':cnpj', $cnpj);
@@ -106,18 +119,19 @@ class OrdersDeliveryController {
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$result) {
+            file_put_contents($logFile, "Pedido não encontrado.\n\n", FILE_APPEND);
             return false;  // Pedido não encontrado
         }
 
         $id = $result['id'];
 
-        // realiza o update usando o ID
+        // Realiza o update usando o ID
         $queryUpdate = "UPDATE orders_delivery SET
-                        status = :status, modo_de_conta = :modo_de_conta, identificador_conta = :identificador_conta, 
-                        hora_abertura = :hora_abertura, hora_saida = :hora_saida, intg_tipo = :intg_tipo, 
-                        cod_iapp = :cod_iapp, tempo_preparo = :tempo_preparo, status_pedido = :status_pedido, 
-                        quantidade_producao = :quantidade_producao, quantidade_produzida = :quantidade_produzida,tipo_entrega = :tipo_entrega
-                        WHERE id = :id";
+                    status = :status, modo_de_conta = :modo_de_conta, identificador_conta = :identificador_conta, 
+                    hora_abertura = :hora_abertura, hora_saida = :hora_saida, intg_tipo = :intg_tipo, 
+                    cod_iapp = :cod_iapp, tempo_preparo = :tempo_preparo, status_pedido = :status_pedido, 
+                    quantidade_producao = :quantidade_producao, quantidade_produzida = :quantidade_produzida, tipo_entrega = :tipo_entrega
+                    WHERE id = :id";
         $stmtUpdate = $pdo->prepare($queryUpdate);
         $stmtUpdate->bindParam(':id', $id);
         $stmtUpdate->bindParam(':status', $data['status']);
@@ -133,10 +147,15 @@ class OrdersDeliveryController {
         $stmtUpdate->bindParam(':quantidade_produzida', $data['quantidade_produzida']);
         $stmtUpdate->bindParam(':tipo_entrega', $data['tipo_entrega']);
 
+        $executed = $stmtUpdate->execute();
 
+        // Log do resultado da execução
+        $logResult = $executed ? "Atualização realizada com sucesso.\n\n" : "Falha na atualização.\n\n";
+        file_put_contents($logFile, $logResult, FILE_APPEND);
 
-        return $stmtUpdate->execute();
+        return $executed;
     }
+
 
     public static function getOrderDeliveryByCompositeKey($cnpj, $hash, $num_controle) {
         global $pdo;
