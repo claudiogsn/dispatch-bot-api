@@ -65,21 +65,47 @@ function fetchLinksFromAPI($solicitacao_id) {
     }
 }
 
-// Função para atualizar o banco com os links de rastreio
+// Função para atualizar o banco com os links de rastreio e alterar o status do pedido
 function updateParadas($pdo, $parada_id, $link_rastreio_pedido) {
     echo "Atualizando parada_id: $parada_id com link: $link_rastreio_pedido...\n";
     try {
+        // Atualizar o link na tabela orders_paradas
         $sql = "UPDATE orders_paradas SET link_rastreio_pedido = :link_rastreio_pedido WHERE id_parada = :parada_id";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             ':link_rastreio_pedido' => $link_rastreio_pedido,
             ':parada_id' => $parada_id
         ]);
+
         echo "Parada atualizada com sucesso.\n";
+
+        // Obter o cod_iapp a partir do numero_pedido na tabela orders_paradas
+        $sqlFetchCodIapp = "
+            SELECT d.cod_iapp
+            FROM orders_paradas p
+            JOIN orders_delivery d ON p.numero_pedido = d.cod_iapp
+            WHERE p.id_parada = :parada_id
+            LIMIT 1
+        ";
+        $stmtFetch = $pdo->prepare($sqlFetchCodIapp);
+        $stmtFetch->execute([':parada_id' => $parada_id]);
+        $cod_iapp = $stmtFetch->fetchColumn();
+
+        if ($cod_iapp) {
+            // Atualizar o status_pedido na tabela orders_delivery
+            $sqlUpdateDelivery = "UPDATE orders_delivery SET status_pedido = 'PEDIDO DESPACHADO' WHERE cod_iapp = :cod_iapp";
+            $stmtUpdate = $pdo->prepare($sqlUpdateDelivery);
+            $stmtUpdate->execute([':cod_iapp' => $cod_iapp]);
+
+            echo "Status do pedido atualizado para 'PEDIDO DESPACHADO' para cod_iapp: $cod_iapp.\n";
+        } else {
+            echo "Nenhum cod_iapp encontrado para parada_id: $parada_id.\n";
+        }
     } catch (PDOException $e) {
         throw new Exception("Erro ao atualizar parada $parada_id no banco: " . $e->getMessage());
     }
 }
+
 
 // Instancia o logger
 $logger = new LogglyLogger();
@@ -101,6 +127,7 @@ try {
                     try {
                         updateParadas($pdo, $parada_id, $link_rastreio);
                         $logger->sendLog("LINK RASTREIO BOT - Adicionado link: $link_rastreio à parada: $parada_id");
+
                     } catch (Exception $e) {
                         echo "Erro ao atualizar parada $parada_id: " . $e->getMessage() . "\n";
                         $logger->sendLog("Erro ao atualizar parada: $parada_id - " . $e->getMessage(), 'ERROR');
