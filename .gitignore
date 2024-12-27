@@ -2,6 +2,9 @@
 database/communication.ini
 database/log.ini
 database/sample.ini
+controllers/createOrderDelivery.log
+controllers/updateOrderDelivery.log
 
 # Ignorar todos os arquivos .ini
 *.ini
+*.log

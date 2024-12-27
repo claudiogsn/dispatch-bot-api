@@ -8,10 +8,16 @@ class OrdersDeliveryController {
         global $pdo;
 
         // Remove espaços em branco do início e do fim de cada valor
-        array_map('trim', $data);
+        $data = array_map('trim', $data);
+
+        // Criar log da execução
+        $logFile = __DIR__ . '/createOrderDelivery.log'; // Caminho do arquivo na mesma pasta
+        $logMessage = "Recebido em " . date('Y-m-d H:i:s') . ":\n" .
+            "DATA: " . json_encode($data, JSON_PRETTY_PRINT) . "\n\n";
+        file_put_contents($logFile, $logMessage, FILE_APPEND);
 
         $query = "INSERT INTO orders_delivery (cnpj, hash, num_controle, status, modo_de_conta, identificador_conta, hora_abertura, hora_saida, intg_tipo, cod_iapp, tempo_preparo, status_pedido, quantidade_producao, quantidade_produzida, tipo_entrega)
-                  VALUES (:cnpj, :hash, :num_controle, :status, :modo_de_conta, :identificador_conta, :hora_abertura, :hora_saida, :intg_tipo, :cod_iapp, :tempo_preparo, :status_pedido, :quantidade_producao, :quantidade_produzida, :tipo_entrega)";
+              VALUES (:cnpj, :hash, :num_controle, :status, :modo_de_conta, :identificador_conta, :hora_abertura, :hora_saida, :intg_tipo, :cod_iapp, :tempo_preparo, :status_pedido, :quantidade_producao, :quantidade_produzida, :tipo_entrega)";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':cnpj', $data['cnpj']);
         $stmt->bindParam(':hash', $data['hash']);
@@ -29,8 +35,15 @@ class OrdersDeliveryController {
         $stmt->bindParam(':quantidade_produzida', $data['quantidade_produzida']);
         $stmt->bindParam(':tipo_entrega', $data['tipo_entrega']);
 
-        return $stmt->execute();
+        $executed = $stmt->execute();
+
+        // Log do resultado da execução
+        $logResult = $executed ? "Inserção realizada com sucesso.\n\n" : "Falha na inserção.\n\n";
+        file_put_contents($logFile, $logResult, FILE_APPEND);
+
+        return $executed;
     }
+
 
     // Busca todos os pedidos
     public static function getAllOrderDeliveries() {
@@ -94,6 +107,11 @@ class OrdersDeliveryController {
     public static function updateOrderDeliveryByCompositeKey($cnpj, $hash, $num_controle, $data) {
         global $pdo;
 
+
+
+        // Aplicar trim a todos os elementos do array $data
+        $data = array_map('trim', $data);
+
         // Criar log da execução
         $logFile = __DIR__ . '/updateOrderDelivery.log'; // Caminho do arquivo na mesma pasta
         $logMessage = "Recebido em " . date('Y-m-d H:i:s') . ":\n" .
@@ -103,11 +121,7 @@ class OrdersDeliveryController {
             "DATA: " . json_encode($data, JSON_PRETTY_PRINT) . "\n\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
 
-        // Aplicar trim a todos os elementos do array $data
-        $data = array_map('trim', $data);
 
-        // Log do array após trim
-        file_put_contents($logFile, "Após trim:\n" . json_encode($data, JSON_PRETTY_PRINT) . "\n\n", FILE_APPEND);
 
         // Recuperar o ID do pedido
         $queryFindId = "SELECT id FROM orders_delivery WHERE cnpj = :cnpj AND hash = :hash AND num_controle = :num_controle";
