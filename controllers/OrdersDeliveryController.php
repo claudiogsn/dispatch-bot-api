@@ -150,7 +150,7 @@ class OrdersDeliveryController {
             return false;
         }
 
-        return $result;
+        return array_map('trim', $result);
     }
 
     public static function getOrdersDeliveryByPeriod($start, $end) {
