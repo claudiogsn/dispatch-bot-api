@@ -231,14 +231,18 @@ class OrdersDeliveryController {
         LEFT JOIN 
             orders_paradas op
         ON 
-            od.cod_iapp IS NOT NULL AND od.cod_iapp != '' AND od.cod_iapp = op.numero_pedido
+            (
+                (od.intg_tipo = 'HUB-IFOOD' AND od.cod_ifood IS NOT NULL AND od.cod_ifood != '' AND od.cod_ifood = op.numero_pedido)
+                OR
+                (od.intg_tipo != 'HUB-IFOOD' AND od.cod_iapp IS NOT NULL AND od.cod_iapp != '' AND od.cod_iapp = op.numero_pedido)
+            )
         WHERE 
             od.status IN (1, -1, 2) 
             AND od.hora_abertura >= :start 
             AND od.hora_abertura <= :end
         ORDER BY 
             od.hora_saida DESC;
-        ";
+    ";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':start', $start);
         $stmt->bindParam(':end', $end);
@@ -246,6 +250,7 @@ class OrdersDeliveryController {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
 
     public static function calculateTimesByCompositeKey($cnpj, $hash, $num_controle) {
         global $pdo;
