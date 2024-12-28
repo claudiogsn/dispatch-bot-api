@@ -16,8 +16,20 @@ class OrdersDeliveryController {
             "DATA: " . json_encode($data, JSON_PRETTY_PRINT) . "\n\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
 
-        $query = "INSERT INTO orders_delivery (cnpj, hash, num_controle, status, modo_de_conta, identificador_conta, hora_abertura, hora_saida, intg_tipo, cod_iapp, tempo_preparo, status_pedido, quantidade_producao, quantidade_produzida, tipo_entrega)
-              VALUES (:cnpj, :hash, :num_controle, :status, :modo_de_conta, :identificador_conta, :hora_abertura, :hora_saida, :intg_tipo, :cod_iapp, :tempo_preparo, :status_pedido, :quantidade_producao, :quantidade_produzida, :tipo_entrega)";
+        // Extrair os 4 dígitos do campo identificador_conta se intg_tipo for "HUB-IFOOD"
+        $cod_ifood = null;
+        if ($data['intg_tipo'] === "HUB-IFOOD") {
+            if (preg_match('/#(\d{4})/', $data['identificador_conta'], $matches)) {
+                $cod_ifood = $matches[1];
+            } else {
+                // Log de erro se não conseguir extrair o código
+                $errorLog = "Erro ao extrair cod_ifood do identificador_conta: " . $data['identificador_conta'] . "\n";
+                file_put_contents($logFile, $errorLog, FILE_APPEND);
+            }
+        }
+
+        $query = "INSERT INTO orders_delivery (cnpj, hash, num_controle, status, modo_de_conta, identificador_conta, hora_abertura, hora_saida, intg_tipo, cod_iapp, tempo_preparo, status_pedido, quantidade_producao, quantidade_produzida, tipo_entrega, cod_ifood)
+          VALUES (:cnpj, :hash, :num_controle, :status, :modo_de_conta, :identificador_conta, :hora_abertura, :hora_saida, :intg_tipo, :cod_iapp, :tempo_preparo, :status_pedido, :quantidade_producao, :quantidade_produzida, :tipo_entrega, :cod_ifood)";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':cnpj', $data['cnpj']);
         $stmt->bindParam(':hash', $data['hash']);
@@ -34,6 +46,7 @@ class OrdersDeliveryController {
         $stmt->bindParam(':quantidade_producao', $data['quantidade_producao']);
         $stmt->bindParam(':quantidade_produzida', $data['quantidade_produzida']);
         $stmt->bindParam(':tipo_entrega', $data['tipo_entrega']);
+        $stmt->bindParam(':cod_ifood', $cod_ifood);
 
         $executed = $stmt->execute();
 
@@ -43,6 +56,7 @@ class OrdersDeliveryController {
 
         return $executed;
     }
+
 
 
     // Busca todos os pedidos
