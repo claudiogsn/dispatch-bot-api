@@ -69,6 +69,8 @@ function fetchLinksFromAPI($solicitacao_id) {
 function updateParadas($pdo, $parada_id, $link_rastreio_pedido) {
     echo "Atualizando parada_id: $parada_id com link: $link_rastreio_pedido...\n";
     try {
+        $todayZeroed = date('Y-m-d 00:00:00');
+
         // Atualizar o link na tabela orders_paradas
         $sql = "UPDATE orders_paradas SET link_rastreio_pedido = :link_rastreio_pedido WHERE id_parada = :parada_id";
         $stmt = $pdo->prepare($sql);
@@ -79,32 +81,57 @@ function updateParadas($pdo, $parada_id, $link_rastreio_pedido) {
 
         echo "Parada atualizada com sucesso.\n";
 
-        // Obter o cod_iapp a partir do numero_pedido na tabela orders_paradas
-        $sqlFetchCodIapp = "
-            SELECT d.cod_iapp
-            FROM orders_paradas p
-            JOIN orders_delivery d ON p.numero_pedido = d.cod_iapp
-            WHERE p.id_parada = :parada_id
-            LIMIT 1
-        ";
-        $stmtFetch = $pdo->prepare($sqlFetchCodIapp);
-        $stmtFetch->execute([':parada_id' => $parada_id]);
-        $cod_iapp = $stmtFetch->fetchColumn();
+        // Determinar se o numero_pedido tem 4 dígitos
+        $sqlCheckNumeroPedido = "SELECT numero_pedido FROM orders_paradas WHERE id_parada = :parada_id LIMIT 1";
+        $stmtCheck = $pdo->prepare($sqlCheckNumeroPedido);
+        $stmtCheck->execute([':parada_id' => $parada_id]);
+        $numero_pedido = $stmtCheck->fetchColumn();
 
-        if ($cod_iapp) {
-            // Atualizar o status_pedido na tabela orders_delivery
-            $sqlUpdateDelivery = "UPDATE orders_delivery SET status_pedido = 'PEDIDO DESPACHADO' WHERE cod_iapp = :cod_iapp";
-            $stmtUpdate = $pdo->prepare($sqlUpdateDelivery);
-            $stmtUpdate->execute([':cod_iapp' => $cod_iapp]);
-
-            echo "Status do pedido atualizado para 'PEDIDO DESPACHADO' para cod_iapp: $cod_iapp.\n";
+        if ($numero_pedido && preg_match('/^\d{4}$/', $numero_pedido)) {
+            // Se o numero_pedido tem 4 dígitos, usar cod_ifood
+            $sqlFetchCod = "
+                SELECT d.cod_ifood
+                FROM orders_paradas p
+                JOIN orders_delivery d ON p.numero_pedido = d.cod_ifood
+                WHERE p.id_parada = :parada_id
+                AND d.hora_abertura > :todayZeroed
+                LIMIT 1
+            ";
         } else {
-            echo "Nenhum cod_iapp encontrado para parada_id: $parada_id.\n";
+            // Caso contrário, usar cod_iapp
+            $sqlFetchCod = "
+                SELECT d.cod_iapp
+                FROM orders_paradas p
+                JOIN orders_delivery d ON p.numero_pedido = d.cod_iapp
+                WHERE p.id_parada = :parada_id
+                AND d.hora_abertura > :todayZeroed
+                LIMIT 1
+            ";
+        }
+
+        $stmtFetch = $pdo->prepare($sqlFetchCod);
+        $stmtFetch->execute([':parada_id' => $parada_id, ':todayZeroed' => $todayZeroed]);
+        $cod = $stmtFetch->fetchColumn();
+
+        if ($cod) {
+            // Verificar o comprimento do código para decidir qual coluna usar no UPDATE
+            $column = (strlen($cod) === 4) ? 'cod_ifood' : 'cod_iapp';
+
+            // Atualizar o status_pedido na tabela orders_delivery
+            $sqlUpdateDelivery = "UPDATE orders_delivery SET status_pedido = 'PEDIDO DESPACHADO' WHERE $column = :cod AND hora_abertura > :todayZeroed";
+            $stmtUpdate = $pdo->prepare($sqlUpdateDelivery);
+            $stmtUpdate->execute([':cod' => $cod, ':todayZeroed' => $todayZeroed]);
+
+            echo "Status do pedido atualizado para 'PEDIDO DESPACHADO' para cod: $cod.\n";
+        } else {
+            echo "Nenhum código correspondente encontrado para parada_id: $parada_id.\n";
         }
     } catch (PDOException $e) {
         throw new Exception("Erro ao atualizar parada $parada_id no banco: " . $e->getMessage());
     }
 }
+
+
 
 
 // Instancia o logger
