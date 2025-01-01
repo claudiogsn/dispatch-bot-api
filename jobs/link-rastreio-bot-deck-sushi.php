@@ -70,6 +70,7 @@ function updateParadas($pdo, $parada_id, $link_rastreio_pedido) {
     echo "Atualizando parada_id: $parada_id com link: $link_rastreio_pedido...\n";
     try {
         $todayZeroed = date('Y-m-d 00:00:00');
+        $hora_saida = date('Y-m-d H:i:s');
 
         // Atualizar o link na tabela orders_paradas
         $sql = "UPDATE orders_paradas SET link_rastreio_pedido = :link_rastreio_pedido WHERE id_parada = :parada_id";
@@ -118,9 +119,9 @@ function updateParadas($pdo, $parada_id, $link_rastreio_pedido) {
             $column = (strlen($cod) === 4) ? 'cod_ifood' : 'cod_iapp';
 
             // Atualizar o status_pedido na tabela orders_delivery
-            $sqlUpdateDelivery = "UPDATE orders_delivery SET status_pedido = 'PEDIDO DESPACHADO' WHERE $column = :cod AND hora_abertura > :todayZeroed";
+            $sqlUpdateDelivery = "UPDATE orders_delivery SET status_pedido = 'PEDIDO DESPACHADO', hora_saida = :hora_saida  WHERE $column = :cod AND hora_abertura > :todayZeroed";
             $stmtUpdate = $pdo->prepare($sqlUpdateDelivery);
-            $stmtUpdate->execute([':cod' => $cod, ':todayZeroed' => $todayZeroed]);
+            $stmtUpdate->execute([':cod' => $cod, ':todayZeroed' => $todayZeroed, ':hora_saida' => $hora_saida]);
 
             echo "Status do pedido atualizado para 'PEDIDO DESPACHADO' para cod: $cod.\n";
         } else {
