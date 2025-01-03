@@ -92,6 +92,10 @@ function sendWhatsapp($pdo, $parada_id, $cod, $link_rastreio) {
         $identificador_conta = $identificadorData['identificador_conta'];
         $telefone = $identificadorData['telefone'];
 
+        if (strpos($telefone, '55') !== 0) {
+            $telefone = '55' . preg_replace('/[^0-9]/', '', $telefone); // Remove caracteres não numéricos e adiciona o "55"
+        }
+
         // Buscar solicitacao_id
         $sqlSolicitacao = "SELECT solicitacao_id FROM orders_paradas WHERE id_parada = :parada_id";
         $stmtSolicitacao = $pdo->prepare($sqlSolicitacao);
@@ -104,7 +108,7 @@ function sendWhatsapp($pdo, $parada_id, $cod, $link_rastreio) {
         }
 
         // Buscar placa_veiculo e nome_taxista
-        $sqlDetalhes = "SELECT placa_veiculo, nome_taxista FROM orders_solicitacoes WHERE solicitacao_id = :solicitacao_id";
+        $sqlDetalhes = "SELECT placa_veiculo, nome_taxista, cor, veiculo FROM orders_solicitacoes WHERE solicitacao_id = :solicitacao_id";
         $stmtDetalhes = $pdo->prepare($sqlDetalhes);
         $stmtDetalhes->execute([':solicitacao_id' => $solicitacao_id]);
         $detalhes = $stmtDetalhes->fetch(PDO::FETCH_ASSOC);
@@ -114,7 +118,7 @@ function sendWhatsapp($pdo, $parada_id, $cod, $link_rastreio) {
             return;
         }
 
-        $placa_veiculo = $detalhes['placa_veiculo'];
+        $placa_veiculo = $detalhes['placa_veiculo'] . ', modelo: ' . $detalhes['veiculo'] . ' e cor: ' . $detalhes['cor'];
         $nome_taxista = $detalhes['nome_taxista'];
 
         // Enviar o request
