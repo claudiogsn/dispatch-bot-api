@@ -64,6 +64,104 @@ function fetchLinksFromAPI($solicitacao_id) {
         throw new Exception("Erro ao realizar requisição na API: " . $e->getMessage());
     }
 }
+function logPayload($payload) {
+    $logFile = __DIR__ . '/whatsapp_payloads.log'; // Caminho do arquivo de log
+    $timestamp = date('Y-m-d H:i:s'); // Timestamp para registro
+
+    // Formatar o log
+    $logEntry = "[$timestamp] " . json_encode($payload, JSON_PRETTY_PRINT) . "\n";
+
+    // Escrever no arquivo
+    file_put_contents($logFile, $logEntry, FILE_APPEND);
+}
+
+// Metodo para buscar informações e enviar o request
+function sendWhatsapp($pdo, $parada_id, $cod, $link_rastreio) {
+    try {
+        // Buscar identificador_conta e telefone
+        $sqlIdentificador = "SELECT TRIM(SUBSTRING(identificador_conta, 13)) AS identificador_conta, telefone FROM orders_delivery WHERE cod_iapp = :cod";
+        $stmtIdentificador = $pdo->prepare($sqlIdentificador);
+        $stmtIdentificador->execute([':cod' => $cod]);
+        $identificadorData = $stmtIdentificador->fetch(PDO::FETCH_ASSOC);
+
+        if (!$identificadorData) {
+            echo "Nenhuma informação encontrada para cod_iapp: $cod.\n";
+            return;
+        }
+
+        $identificador_conta = $identificadorData['identificador_conta'];
+        $telefone = $identificadorData['telefone'];
+
+        // Buscar solicitacao_id
+        $sqlSolicitacao = "SELECT solicitacao_id FROM orders_paradas WHERE id_parada = :parada_id";
+        $stmtSolicitacao = $pdo->prepare($sqlSolicitacao);
+        $stmtSolicitacao->execute([':parada_id' => $parada_id]);
+        $solicitacao_id = $stmtSolicitacao->fetchColumn();
+
+        if (!$solicitacao_id) {
+            echo "Nenhum solicitacao_id encontrado para parada_id: $parada_id.\n";
+            return;
+        }
+
+        // Buscar placa_veiculo e nome_taxista
+        $sqlDetalhes = "SELECT placa_veiculo, nome_taxista FROM orders_solicitacoes WHERE solicitacao_id = :solicitacao_id";
+        $stmtDetalhes = $pdo->prepare($sqlDetalhes);
+        $stmtDetalhes->execute([':solicitacao_id' => $solicitacao_id]);
+        $detalhes = $stmtDetalhes->fetch(PDO::FETCH_ASSOC);
+
+        if (!$detalhes) {
+            echo "Nenhuma informação encontrada para solicitacao_id: $solicitacao_id.\n";
+            return;
+        }
+
+        $placa_veiculo = $detalhes['placa_veiculo'];
+        $nome_taxista = $detalhes['nome_taxista'];
+
+        // Enviar o request
+        echo "Enviando request com as informações obtidas...\n";
+        $api_url = "https://us-central1-neoron.cloudfunctions.net/api/campaigns/4b027f3f-decd-4adf-8d65-2c1f5320b813";
+        $api_key = "a26816cb-2c18-45a2-81b7-3873241bdeb5";
+
+        $payload = [
+            [
+                "phone_number" => $telefone,
+                "variables" => [
+                    "identificador_conta" => $identificador_conta,
+                    "cod_iapp" => $cod,
+                    "nome_taxista" => $nome_taxista,
+                    "placa_veiculo" => $placa_veiculo,
+                    "link_rastreio_pedido" => $link_rastreio
+                ]
+            ]
+        ];
+
+        // Logar o payload
+        logPayload($payload);
+
+        $options = [
+            "http" => [
+                "header" => [
+                    "Content-Type: application/json",
+                    "neoron_api_key: $api_key"
+                ],
+                "method" => "POST",
+                "content" => json_encode($payload)
+            ]
+        ];
+
+        $context = stream_context_create($options);
+
+        try {
+            $response = file_get_contents($api_url, false, $context);
+            echo "Request enviado com sucesso.\n";
+        } catch (Exception $e) {
+            echo "Erro ao enviar request: " . $e->getMessage() . "\n";
+        }
+    } catch (Exception $e) {
+        echo "Erro ao buscar informações: " . $e->getMessage() . "\n";
+    }
+}
+
 
 // Função para atualizar o banco com os links de rastreio e alterar o status do pedido
 function updateParadas($pdo, $parada_id, $link_rastreio_pedido) {
@@ -124,6 +222,11 @@ function updateParadas($pdo, $parada_id, $link_rastreio_pedido) {
             $stmtUpdate->execute([':cod' => $cod, ':todayZeroed' => $todayZeroed, ':hora_saida' => $hora_saida]);
 
             echo "Status do pedido atualizado para 'PEDIDO DESPACHADO' para cod: $cod.\n";
+
+            if ($column === 'cod_iapp') {
+                sendWhatsapp($pdo, $parada_id, $cod, $link_rastreio_pedido);
+            }
+
         } else {
             echo "Nenhum código correspondente encontrado para parada_id: $parada_id.\n";
         }
