@@ -232,7 +232,15 @@ class OrdersDeliveryController {
             orders_paradas op
         ON 
             (
-                (od.intg_tipo = 'HUB-IFOOD' AND od.cod_ifood IS NOT NULL AND od.cod_ifood != '' AND od.cod_ifood = op.numero_pedido)
+                (od.intg_tipo = 'HUB-IFOOD' AND od.cod_ifood IS NOT NULL AND od.cod_ifood != '' 
+                    AND od.cod_ifood = op.numero_pedido
+                    AND EXISTS (
+                        SELECT 1 
+                        FROM orders_solicitacoes os
+                        WHERE os.solicitacao_id = op.solicitacao_id
+                        AND DATE(os.data_hora_solicitacao) = DATE(od.hora_abertura)
+                    )
+                )
                 OR
                 (od.intg_tipo != 'HUB-IFOOD' AND od.cod_iapp IS NOT NULL AND od.cod_iapp != '' AND od.cod_iapp = op.numero_pedido)
             )
