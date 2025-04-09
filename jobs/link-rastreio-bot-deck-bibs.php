@@ -64,28 +64,26 @@ function fetchLinksFromAPI($solicitacao_id) {
         throw new Exception("Erro ao realizar requisição na API: " . $e->getMessage());
     }
 }
-function logPayload($payload, $response = null) {
-    $logFile = __DIR__ . '/whatsapp_payloads.log'; // Caminho do arquivo de log
-    $timestamp = date('Y-m-d H:i:s'); // Timestamp para registro
 
-    // Formatar o log
+
+// Metodo para buscar informações e enviar o request
+function logPayload($payload, $response = null) {
+    $logFile = __DIR__ . '/whatsapp_payloads.log';
+    $timestamp = date('Y-m-d H:i:s');
+
     $logEntry = "[$timestamp] Payload Enviado:\n" . json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
 
     if ($response !== null) {
-        $logEntry .= "[$timestamp] Resposta da API:\n" . json_encode(json_decode($response, true), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
+        $logEntry .= "[$timestamp] Resposta da API:\n" . $response . "\n";
     }
 
     $logEntry .= str_repeat("=", 80) . "\n";
 
-    // Escrever no arquivo
     file_put_contents($logFile, $logEntry, FILE_APPEND);
 }
 
-
-// Metodo para buscar informações e enviar o request
 function sendWhatsapp($pdo, $parada_id, $cod, $link_rastreio) {
     try {
-        // Buscar identificador_conta e telefone
         $sqlIdentificador = "SELECT TRIM(SUBSTRING(identificador_conta, 13)) AS identificador_conta, concat('55',telefone) as telefone FROM orders_delivery WHERE cod_iapp = :cod";
         $stmtIdentificador = $pdo->prepare($sqlIdentificador);
         $stmtIdentificador->execute([':cod' => $cod]);
@@ -99,7 +97,6 @@ function sendWhatsapp($pdo, $parada_id, $cod, $link_rastreio) {
         $identificador_conta = $identificadorData['identificador_conta'];
         $telefone = $identificadorData['telefone'];
 
-        // Buscar solicitacao_id
         $sqlSolicitacao = "SELECT solicitacao_id FROM orders_paradas WHERE id_parada = :parada_id";
         $stmtSolicitacao = $pdo->prepare($sqlSolicitacao);
         $stmtSolicitacao->execute([':parada_id' => $parada_id]);
@@ -110,7 +107,6 @@ function sendWhatsapp($pdo, $parada_id, $cod, $link_rastreio) {
             return;
         }
 
-        // Buscar placa_veiculo e nome_taxista
         $sqlDetalhes = "SELECT placa_veiculo, nome_taxista FROM orders_solicitacoes WHERE solicitacao_id = :solicitacao_id";
         $stmtDetalhes = $pdo->prepare($sqlDetalhes);
         $stmtDetalhes->execute([':solicitacao_id' => $solicitacao_id]);
@@ -124,49 +120,53 @@ function sendWhatsapp($pdo, $parada_id, $cod, $link_rastreio) {
         $placa_veiculo = $detalhes['placa_veiculo'];
         $nome_taxista = $detalhes['nome_taxista'];
 
-        // Enviar o request
-        echo "Enviando request com as informações obtidas...\n";
-        $api_url = "https://api.z-api.io/instances/3DF712E49DF860A86AD80A1EFCACDE10/token/A22B3AAD2C11A72646680264/send-text";
-        $api_key = "F00ff92c2022b4ed290e5b6e70f36b308S";
-
-        $mensagem = "🚨 *Notícia boa!* *{$identificador_conta}*, seu pedido *{$cod}* já está em rota de entrega!\n\n" .
+        $mensagem = "🚨 *Notícia boa!* *{$identificador_conta}*, seu pedido *{$cod}* já está em rota de entrega!\n" .
             "Nosso motoboy *{$nome_taxista}* de placa *{$placa_veiculo}* pode ser acompanhado em tempo real pelo link: {$link_rastreio}\n" .
             "Estamos chegando, até já! 😊\n" .
             "_Esta mensagem é automática e não deve ser respondida._";
 
         $payload = [
-            [
-                "phone" => $telefone,
-                "message" => $mensagem
-            ]
+            "phone" => $telefone,
+            "message" => $mensagem
         ];
 
-        $options = [
-            "http" => [
-                "header" => [
-                    "Content-Type: application/json",
-                    "Client-Token: $api_key"
-                ],
-                "method" => "POST",
-                "content" => json_encode($payload)
-            ]
-        ];
+        $api_url = "https://api.z-api.io/instances/3DF712E49DF860A86AD80A1EFCACDE10/token/A22B3AAD2C11A72646680264/send-text";
+        $api_key = "F00ff92c2022b4ed290e5b6e70f36b308S";
 
-        $context = stream_context_create($options);
+        $curl = curl_init();
 
-        try {
-            $response = file_get_contents($api_url, false, $context);
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $api_url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => "",
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => "POST",
+            CURLOPT_POSTFIELDS => json_encode($payload),
+            CURLOPT_HTTPHEADER => array(
+                "client-token: $api_key",
+                "content-type: application/json"
+            ),
+        ));
+
+        $response = curl_exec($curl);
+        $err = curl_error($curl);
+
+        curl_close($curl);
+
+        if ($err) {
+            echo "Erro no cURL: $err\n";
+            logPayload($payload, "Erro: $err");
+        } else {
             echo "Request enviado com sucesso.\n";
             logPayload($payload, $response);
-        } catch (Exception $e) {
-            echo "Erro ao enviar request: " . $e->getMessage() . "\n";
-            logPayload($payload, $response);
         }
+
     } catch (Exception $e) {
         echo "Erro ao buscar informações: " . $e->getMessage() . "\n";
     }
 }
-
 
 
 // Função para atualizar o banco com os links de rastreio e alterar o status do pedido
@@ -240,9 +240,6 @@ function updateParadas($pdo, $parada_id, $link_rastreio_pedido) {
         throw new Exception("Erro ao atualizar parada $parada_id no banco: " . $e->getMessage());
     }
 }
-
-
-
 
 // Instancia o logger
 $logger = new LogglyLogger();
