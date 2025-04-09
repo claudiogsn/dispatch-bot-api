@@ -64,16 +64,23 @@ function fetchLinksFromAPI($solicitacao_id) {
         throw new Exception("Erro ao realizar requisição na API: " . $e->getMessage());
     }
 }
-function logPayload($payload) {
+function logPayload($payload, $response = null) {
     $logFile = __DIR__ . '/whatsapp_payloads.log'; // Caminho do arquivo de log
     $timestamp = date('Y-m-d H:i:s'); // Timestamp para registro
 
     // Formatar o log
-    $logEntry = "[$timestamp] " . json_encode($payload, JSON_PRETTY_PRINT) . "\n";
+    $logEntry = "[$timestamp] Payload Enviado:\n" . json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
+
+    if ($response !== null) {
+        $logEntry .= "[$timestamp] Resposta da API:\n" . json_encode(json_decode($response, true), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
+    }
+
+    $logEntry .= str_repeat("=", 80) . "\n";
 
     // Escrever no arquivo
     file_put_contents($logFile, $logEntry, FILE_APPEND);
 }
+
 
 // Metodo para buscar informações e enviar o request
 function sendWhatsapp($pdo, $parada_id, $cod, $link_rastreio) {
