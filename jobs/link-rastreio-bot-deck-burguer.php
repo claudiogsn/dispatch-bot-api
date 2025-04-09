@@ -119,19 +119,20 @@ function sendWhatsapp($pdo, $parada_id, $cod, $link_rastreio) {
 
         // Enviar o request
         echo "Enviando request com as informações obtidas...\n";
-        $api_url = "https://us-central1-neoron.cloudfunctions.net/api/campaigns/4b027f3f-decd-4adf-8d65-2c1f5320b813";
-        $api_key = "a26816cb-2c18-45a2-81b7-3873241bdeb5";
+        $api_url = "https://api.z-api.io/instances/3DF712E49DF860A86AD80A1EFCACDE10/token/A22B3AAD2C11A72646680264/send-text";
+        $api_key = "F00ff92c2022b4ed290e5b6e70f36b308S";
+
+        $mensagem = <<<EOT
+        🚨 Notícia boa! {$identificador_conta}, seu pedido {$cod} já está em rota de entrega!
+        Nosso motoboy {$nome_taxista} de placa {$placa_veiculo} pode ser acompanhado em tempo real pelo link: {$link_rastreio}
+        Estamos chegando, até já! 😊
+        Esta mensagem é automática e não deve ser respondida.
+EOT;
 
         $payload = [
             [
-                "phone_number" => $telefone,
-                "variables" => [
-                    "identificador_conta" => $identificador_conta,
-                    "cod_iapp" => $cod,
-                    "nome_taxista" => $nome_taxista,
-                    "placa_veiculo" => $placa_veiculo,
-                    "link_rastreio_pedido" => $link_rastreio
-                ]
+                "phone" => $telefone,
+                "message" => $mensagem
             ]
         ];
 
@@ -142,7 +143,7 @@ function sendWhatsapp($pdo, $parada_id, $cod, $link_rastreio) {
             "http" => [
                 "header" => [
                     "Content-Type: application/json",
-                    "neoron_api_key: $api_key"
+                    "Client-Token: $api_key"
                 ],
                 "method" => "POST",
                 "content" => json_encode($payload)
