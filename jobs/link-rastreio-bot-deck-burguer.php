@@ -141,9 +141,6 @@ function sendWhatsapp($pdo, $parada_id, $cod, $link_rastreio) {
             ]
         ];
 
-        // Logar o payload
-        logPayload($payload);
-
         $options = [
             "http" => [
                 "header" => [
@@ -160,8 +157,10 @@ function sendWhatsapp($pdo, $parada_id, $cod, $link_rastreio) {
         try {
             $response = file_get_contents($api_url, false, $context);
             echo "Request enviado com sucesso.\n";
+            logPayload($payload, $response);
         } catch (Exception $e) {
             echo "Erro ao enviar request: " . $e->getMessage() . "\n";
+            logPayload($payload, $response);
         }
     } catch (Exception $e) {
         echo "Erro ao buscar informações: " . $e->getMessage() . "\n";
