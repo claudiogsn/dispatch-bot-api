@@ -122,12 +122,10 @@ function sendWhatsapp($pdo, $parada_id, $cod, $link_rastreio) {
         $api_url = "https://api.z-api.io/instances/3DF712E49DF860A86AD80A1EFCACDE10/token/A22B3AAD2C11A72646680264/send-text";
         $api_key = "F00ff92c2022b4ed290e5b6e70f36b308S";
 
-        $mensagem = <<<EOT
-        🚨 Notícia boa! {$identificador_conta}, seu pedido {$cod} já está em rota de entrega!
-        Nosso motoboy {$nome_taxista} de placa {$placa_veiculo} pode ser acompanhado em tempo real pelo link: {$link_rastreio}
-        Estamos chegando, até já! 😊
-        Esta mensagem é automática e não deve ser respondida.
-EOT;
+        $mensagem = "🚨 *Notícia boa!* *{$identificador_conta}*, seu pedido *{$cod}* já está em rota de entrega!\n\n" .
+            "Nosso motoboy *{$nome_taxista}* de placa *{$placa_veiculo}* pode ser acompanhado em tempo real pelo link: {$link_rastreio}\n" .
+            "Estamos chegando, até já! 😊\n" .
+            "_Esta mensagem é automática e não deve ser respondida._";
 
         $payload = [
             [
