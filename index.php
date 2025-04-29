@@ -22,6 +22,7 @@ require_once 'controllers/OrderController.php';
 require_once 'controllers/LogController.php';
 require_once 'controllers/OrdersDeliveryController.php';
 require_once 'controllers/ClientOrders.php';
+require_once 'controllers/JobsController.php';
 
 $json = file_get_contents('php://input');
 $data = json_decode($json, true);
@@ -100,7 +101,6 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'deleteOrderDelivery':
                 $response = OrdersDeliveryController::deleteOrderDelivery($requestData['id']);
                 break;
-                
             case 'getOrderDeliveryByCompositeKey':
                 if (isset($requestData['cnpj'], $requestData['hash'], $requestData['num_controle'])) {
                     $response = OrdersDeliveryController::getOrderDeliveryByCompositeKey(
@@ -111,7 +111,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     throw new Exception("Missing required fields for getOrderDeliveryByCompositeKey.");
                 }
                 break;
-
             case 'getOrdersDeliveryByPeriod':
                 if (isset($requestData['start'], $requestData['end'])) {
                     $response = OrdersDeliveryController::getOrdersDeliveryByPeriod($requestData['start'], $requestData['end']);
@@ -120,7 +119,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     throw new Exception("Missing required fields for getOrdersDeliveryByPeriod.");
                 }
                 break;
-
             case 'getOrdersDeliveryByPeriodMock':
                 if (isset($requestData['start'], $requestData['end'])) {
                     $response = OrdersDeliveryController::getOrdersDeliveryByPeriodMock($requestData['start'], $requestData['end']);
@@ -129,7 +127,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     throw new Exception("Missing required fields for getOrdersDeliveryByPeriod.");
                 }
                 break;
-
             case 'calculateTimesByCompositeKey':
                 if (isset($requestData['cnpj'], $requestData['hash'], $requestData['num_controle'])) {
                     $response = OrdersDeliveryController::calculateTimesByCompositeKey(
@@ -140,7 +137,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     throw new Exception("Missing required fields for calculateTimesByCompositeKey.");
                 }
                 break;
-
             case 'getOrdersChartData':
                 if (isset($requestData['start'], $requestData['end'])) {
                     $response = OrdersDeliveryController::getOrdersChartData($requestData['start'], $requestData['end']);
@@ -149,8 +145,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     throw new Exception("Missing required fields for getOrdersChartData.");
                 }
                 break;
-                
-
             case 'getOrders':
                 if (isset($requestData['identificador'], $requestData['integracao'])) {
                     $response = ClientOrders::getOrders($requestData['identificador'], $requestData['integracao']);
@@ -159,7 +153,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     throw new Exception("Missing required fields for getOrders.");
                 }
                 break;
-
             case 'getDeliveryInfoByNumeroParada':
                 if (isset($requestData['numero_parada'])) {
                     $response = OrdersDeliveryController::getDeliveryInfoByNumeroParada($requestData['numero_parada']);
@@ -168,7 +161,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     throw new Exception("Missing required fields for getDeliveryInfoByNumeroParada.");
                 }
                 break;
-
             case 'changeStatusPedido':
                 if (isset($requestData['cnpj'], $requestData['hash'], $requestData['num_controle'], $requestData['status'])) {
                     $response = OrdersDeliveryController::changeStatusPedido(
@@ -180,6 +172,47 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+            // Métodos para JobsController
+            case 'fetchSolicitacoesSemRastreio':
+                if (isset($requestData['empresa_id'])) {
+                    $response = JobsController::fetchSolicitacoesSemRastreio($requestData['empresa_id']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required field: empresa_id.");
+                }
+            break;
+            case 'fetchLinksFromAPI':
+                if (isset($requestData['solicitacao_id'])) {
+                    $response = JobsController::fetchLinksFromAPI($requestData['solicitacao_id']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required field: solicitacao_id.");
+                }
+            break;
+            case 'logPayload':
+                if (isset($requestData['payload'])) {
+                    $response = JobsController::logPayload($requestData['payload']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required field: payload.");
+                }
+            break;
+            case 'sendWhatsapp':
+                if (isset($requestData['parada_id'], $requestData['cod'], $requestData['link_rastreio'])) {
+                    $response = JobsController::sendWhatsapp($requestData['parada_id'], $requestData['cod'], $requestData['link_rastreio']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required fields for sendWhatsapp.");
+                }
+            break;
+            case 'updateParadas':
+                if (isset($requestData['parada_id'], $requestData['link_rastreio'])) {
+                    $response = JobsController::updateParadas($requestData['parada_id'], $requestData['link_rastreio']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required fields for updateParadas.");
+                }
+            break;
 
             default:
                 http_response_code(405);
