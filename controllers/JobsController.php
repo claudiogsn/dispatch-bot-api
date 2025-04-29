@@ -87,7 +87,19 @@ class JobsController
     {
         global $pdo;
 
+
+        $config = json_decode(file_get_contents('aws-config.json'), true);
+        $aws = $config['aws'];
+
+        $accessKey = $aws['accessKeyId'];
+        $secretKey = $aws['secretAccessKey'];
+        $region = $aws['region'];
+        $service = $aws['service'];
+        $queueUrl = $aws['queueUrl'];
+
+
         try {
+            // === COLETAR DADOS ===
             $sqlIdentificador = "SELECT TRIM(SUBSTRING(identificador_conta, 13)) AS identificador_conta, concat('55',telefone) as telefone FROM orders_delivery WHERE cod_iapp = :cod";
             $stmtIdentificador = $pdo->prepare($sqlIdentificador);
             $stmtIdentificador->execute([':cod' => $cod]);
@@ -121,38 +133,90 @@ class JobsController
             $placa_veiculo = $detalhes['placa_veiculo'];
             $nome_taxista = $detalhes['nome_taxista'];
 
-            $api_url = "https://api.z-api.io/instances/3DF712E49DF860A86AD80A1EFCACDE10/token/A22B3AAD2C11A72646680264/send-text";
-            $api_key = "F00ff92c2022b4ed290e5b6e70f36b308S";
 
-            $mensagem = "🚨 *Notícia boa!* *{$identificador_conta}*, seu pedido *{$cod}* já está em rota de entrega!\n\n" .
-                "Nosso motoboy *{$nome_taxista}* de placa *{$placa_veiculo}* pode ser acompanhado em tempo real pelo link: {$link_rastreio}\n" .
-                "Estamos chegando, até já! 😊\n" .
-                "_Esta mensagem é automática e não deve ser respondida._";
+            $message = json_encode([
+                'identificador_conta' => $identificador_conta,
+                'cod' => $cod,
+                'nome_taxista' => $nome_taxista,
+                'placa_veiculo' => $placa_veiculo,
+                'link_rastreio' => $link_rastreio,
+                'telefone' => $telefone,
+            ]);
 
-            $payload = [
-                [
-                    "phone" => $telefone,
-                    "message" => $mensagem
-                ]
+            // === AWS Signature v4 ===
+            $now = gmdate('Ymd\THis\Z');
+            $date = gmdate('Ymd');
+            $params = http_build_query([
+                'Action' => 'SendMessage',
+                'MessageBody' => $message,
+                'Version' => '2012-11-05'
+            ]);
+
+            $parsedUrl = parse_url($queueUrl);
+            $host = $parsedUrl['host'];
+            $canonicalUri = $parsedUrl['path'];
+            $canonicalHeaders = "host:$host\nx-amz-date:$now\n";
+            $signedHeaders = 'host;x-amz-date';
+            $payloadHash = hash('sha256', $params);
+
+            $canonicalRequest = implode("\n", [
+                'POST',
+                $canonicalUri,
+                '',
+                $canonicalHeaders,
+                $signedHeaders,
+                $payloadHash
+            ]);
+
+            $algorithm = 'AWS4-HMAC-SHA256';
+            $credentialScope = "$date/$region/$service/aws4_request";
+            $stringToSign = implode("\n", [
+                $algorithm,
+                $now,
+                $credentialScope,
+                hash('sha256', $canonicalRequest)
+            ]);
+
+            // Função de assinatura
+            $sign = function ($key, $msg) {
+                return hash_hmac('sha256', $msg, $key, true);
+            };
+
+            $kDate = $sign('AWS4' . $secretKey, $date);
+            $kRegion = $sign($kDate, $region);
+            $kService = $sign($kRegion, $service);
+            $kSigning = $sign($kService, 'aws4_request');
+            $signature = hash_hmac('sha256', $stringToSign, $kSigning);
+
+            $authorizationHeader = "$algorithm Credential=$accessKey/$credentialScope, SignedHeaders=$signedHeaders, Signature=$signature";
+            $headers = [
+                "Authorization: $authorizationHeader",
+                "x-amz-date: $now",
+                "Content-Type: application/x-www-form-urlencoded"
             ];
 
-            $options = [
-                "http" => [
-                    "header" => [
-                        "Content-Type: application/json",
-                        "Client-Token: $api_key"
-                    ],
-                    "method" => "POST",
-                    "content" => json_encode($payload)
-                ]
-            ];
+            // === Envia cURL para o SQS ===
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $queueUrl);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $params);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 
-            $context = stream_context_create($options);
-            $response = file_get_contents($api_url, false, $context);
+            $response = curl_exec($ch);
+            $curlError = curl_error($ch);
+            curl_close($ch);
 
-            self::logPayload($payload, $response);
+            if ($curlError) {
+                return ['success' => false, 'error' => "Erro cURL: $curlError"];
+            }
 
-            return ['success' => true, 'response' => json_decode($response, true)];
+            // Log da fila, se necessário
+            self::logPayload(['mensagem_json' => $message], $response);
+
+            return ['success' => true, 'response' => $response];
 
         } catch (Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
