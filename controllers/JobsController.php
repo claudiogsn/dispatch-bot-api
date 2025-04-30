@@ -41,33 +41,73 @@ class JobsController
 
     public static function fetchLinksFromAPI($solicitacao_id)
     {
+        global $pdo;
+
         $api_url = "https://cloud.taximachine.com.br/api/integracao/obterLinkRastreio/$solicitacao_id";
         $api_key = "mch_api_h2CcjBndaZsjZGgluznxn5FA";
         $username = "ti@vemprodeck.com.br";
         $password = "S3t1c@2013";
 
-        $options = [
-            "http" => [
-                "header" => [
-                    "Authorization: Basic " . base64_encode("$username:$password"),
-                    "api-key: $api_key"
-                ]
-            ]
+        $headers = [
+            "Authorization: Basic " . base64_encode("$username:$password"),
+            "api-key: $api_key"
         ];
 
-        $context = stream_context_create($options);
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $api_url);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // cuidado em produção
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
-        try {
-            $response = file_get_contents($api_url, false, $context);
-            return json_decode($response, true);
-        } catch (Exception $e) {
-            return ['success' => false, 'error' => $e->getMessage()];
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        if (curl_errno($ch)) {
+            $error_msg = curl_error($ch);
+            curl_close($ch);
+
+            // Atualiza como "Link Expirado"
+            self::marcarLinkExpirado($solicitacao_id);
+
+            return ['success' => false, 'error' => "Erro cURL: $error_msg"];
         }
+
+        curl_close($ch);
+
+        // Se erro HTTP (ex: 400), também marca como expirado
+        if ($http_code >= 400) {
+            self::marcarLinkExpirado($solicitacao_id);
+
+            return [
+                'success' => false,
+                'error' => "Erro HTTP $http_code",
+                'response' => $response
+            ];
+        }
+
+        return json_decode($response, true);
     }
+
+    private static function marcarLinkExpirado($solicitacao_id)
+    {
+        global $pdo;
+
+        $sql = "UPDATE orders_paradas 
+            SET link_rastreio_pedido = 'Link Expirado' 
+            WHERE solicitacao_id = :solicitacao_id 
+              AND link_rastreio_pedido IS NULL";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':solicitacao_id' => $solicitacao_id]);
+    }
+
+
+
 
     public static function logPayload($payload, $response = null): array
     {
-        $logFile = __DIR__ . '/../logs/whatsapp_payloads.log';
+        $logFile = __DIR__ . 'whatsapp_payloads.log';
         $timestamp = date('Y-m-d H:i:s');
 
         $logEntry = "[$timestamp] Payload Enviado:\n" . json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
@@ -88,7 +128,7 @@ class JobsController
         global $pdo;
 
 
-        $config = json_decode(file_get_contents('aws-config.json'), true);
+        $config = json_decode(file_get_contents(__DIR__ . '/aws-config.json'), true);
         $aws = $config['aws'];
 
         $accessKey = $aws['accessKeyId'];
@@ -100,7 +140,24 @@ class JobsController
 
         try {
             // === COLETAR DADOS ===
-            $sqlIdentificador = "SELECT TRIM(SUBSTRING(identificador_conta, 13)) AS identificador_conta, concat('55',telefone) as telefone FROM orders_delivery WHERE cod_iapp = :cod";
+            if ($cod && preg_match('/^\d{4}$/', $cod)) {
+                $sqlIdentificador = "
+                    SELECT 
+                        TRIM(SUBSTRING(identificador_conta, 13)) AS identificador_conta, 
+                        CONCAT('55', telefone) AS telefone 
+                    FROM orders_delivery 
+                    WHERE cod_ifood = :cod
+                ";
+            } else {
+                $sqlIdentificador = "
+                    SELECT 
+                        TRIM(SUBSTRING(identificador_conta, 13)) AS identificador_conta, 
+                        CONCAT('55', telefone) AS telefone 
+                    FROM orders_delivery 
+                    WHERE cod_iapp = :cod
+                ";
+            }
+
             $stmtIdentificador = $pdo->prepare($sqlIdentificador);
             $stmtIdentificador->execute([':cod' => $cod]);
             $identificadorData = $stmtIdentificador->fetch(PDO::FETCH_ASSOC);
@@ -245,43 +302,58 @@ class JobsController
 
             if ($numero_pedido && preg_match('/^\d{4}$/', $numero_pedido)) {
                 $sqlFetchCod = "
-                    SELECT d.cod_ifood
-                    FROM orders_paradas p
-                    JOIN orders_delivery d ON p.numero_pedido = d.cod_ifood
-                    WHERE p.id_parada = :parada_id
-                    AND d.hora_abertura > :todayZeroed
-                    LIMIT 1
-                ";
+                SELECT d.cod_ifood
+                FROM orders_paradas p
+                JOIN orders_delivery d ON p.numero_pedido = d.cod_ifood
+                WHERE p.id_parada = :parada_id
+                AND d.hora_abertura > :todayZeroed
+                LIMIT 1
+            ";
             } else {
                 $sqlFetchCod = "
-                    SELECT d.cod_iapp
-                    FROM orders_paradas p
-                    JOIN orders_delivery d ON p.numero_pedido = d.cod_iapp
-                    WHERE p.id_parada = :parada_id
-                    AND d.hora_abertura > :todayZeroed
-                    LIMIT 1
-                ";
+                SELECT d.cod_iapp
+                FROM orders_paradas p
+                JOIN orders_delivery d ON p.numero_pedido = d.cod_iapp
+                WHERE p.id_parada = :parada_id
+                AND d.hora_abertura > :todayZeroed
+                LIMIT 1
+            ";
             }
 
             $stmtFetch = $pdo->prepare($sqlFetchCod);
-            $stmtFetch->execute([':parada_id' => $parada_id, ':todayZeroed' => $todayZeroed]);
+            $stmtFetch->execute([
+                ':parada_id' => $parada_id,
+                ':todayZeroed' => $todayZeroed
+            ]);
             $cod = $stmtFetch->fetchColumn();
 
             if ($cod) {
                 $column = (strlen($cod) === 4) ? 'cod_ifood' : 'cod_iapp';
 
-                $sqlUpdateDelivery = "UPDATE orders_delivery SET status_pedido = 'PEDIDO DESPACHADO', hora_saida = :hora_saida WHERE $column = :cod AND hora_abertura > :todayZeroed";
+                $sqlUpdateDelivery = "
+                UPDATE orders_delivery
+                SET status_pedido = 'PEDIDO DESPACHADO', hora_saida = :hora_saida
+                WHERE $column = :cod AND hora_abertura > :todayZeroed
+            ";
                 $stmtUpdate = $pdo->prepare($sqlUpdateDelivery);
-                $stmtUpdate->execute([':cod' => $cod, ':todayZeroed' => $todayZeroed, ':hora_saida' => $hora_saida]);
+                $stmtUpdate->execute([
+                    ':cod' => $cod,
+                    ':todayZeroed' => $todayZeroed,
+                    ':hora_saida' => $hora_saida
+                ]);
 
-                if ($column === 'cod_iapp') {
-                    self::sendWhatsapp($parada_id, $cod, $link_rastreio_pedido);
-                }
+                return [
+                    'success' => true,
+                    'parada_id' => $parada_id,
+                    'cod' => $cod,
+                    'link_rastreio' => $link_rastreio_pedido
+                ];
             }
 
-            return ['success' => true];
+            return ['success' => true, 'message' => 'Código não encontrado para atualizar'];
         } catch (PDOException $e) {
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
+
 }
