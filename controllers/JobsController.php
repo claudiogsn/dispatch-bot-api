@@ -356,4 +356,54 @@ class JobsController
         }
     }
 
+    public static function salvarLogWhatsapp(array $mensagem, array $retorno): bool
+    {
+        global $pdo;
+
+        try {
+            // Extrair dados da mensagem
+            $telefone = $mensagem['telefone'] ?? null;
+            $identificador = $mensagem['identificador_conta'] ?? null;
+            $cod = $mensagem['cod'] ?? null;
+            $taxista = $mensagem['nome_taxista'] ?? null;
+            $placa = $mensagem['placa_veiculo'] ?? null;
+            $link = $mensagem['link_rastreio'] ?? null;
+
+            // Extrair dados da resposta
+            $waId = $retorno['contacts'][0]['wa_id'] ?? null;
+            $messageId = $retorno['messages'][0]['id'] ?? null;
+            $status = $retorno['messages'][0]['message_status'] ?? null;
+
+            // Inserir no banco
+            $stmt = $pdo->prepare("
+            INSERT INTO whatsapp_mensages (
+                telefone, identificador_conta, cod_pedido, nome_taxista,
+                placa_veiculo, link_rastreio, wa_id, message_id, message_status
+            ) VALUES (
+                :telefone, :identificador_conta, :cod_pedido, :nome_taxista,
+                :placa_veiculo, :link_rastreio, :wa_id, :message_id, :message_status
+            )
+        ");
+
+
+
+            $stmt->execute([
+                ':telefone' => $telefone,
+                ':identificador_conta' => $identificador,
+                ':cod_pedido' => $cod,
+                ':nome_taxista' => $taxista,
+                ':placa_veiculo' => $placa,
+                ':link_rastreio' => $link,
+                ':wa_id' => $waId,
+                ':message_id' => $messageId,
+                ':message_status' => $status
+            ]);
+
+            return true;
+
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
 }

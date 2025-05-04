@@ -213,6 +213,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     throw new Exception("Missing required fields for updateParadas.");
                 }
             break;
+            case 'salvarLogWhatsapp':
+                if (isset($requestData['mensagem'], $requestData['retorno'])) {
+                        return JobsController::salvarLogWhatsapp($requestData['mensagem'], $requestData['retorno']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required fields for salvarLogWhatsapp.");
+                }
+            break;
 
             default:
                 http_response_code(405);
