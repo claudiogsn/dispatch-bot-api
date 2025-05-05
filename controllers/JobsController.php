@@ -38,7 +38,6 @@ class JobsController
         }
     }
 
-
     public static function fetchLinksFromAPI($solicitacao_id)
     {
         global $pdo;
@@ -101,9 +100,6 @@ class JobsController
         $stmt = $pdo->prepare($sql);
         $stmt->execute([':solicitacao_id' => $solicitacao_id]);
     }
-
-
-
 
     public static function logPayload($payload, $response = null): array
     {
@@ -168,6 +164,21 @@ class JobsController
 
             $identificador_conta = $identificadorData['identificador_conta'];
             $telefone = $identificadorData['telefone'];
+
+            // ✅ Validação do telefone
+            if (empty($telefone) || !ctype_digit($telefone) || strlen($telefone) < 11) {
+                $logData = [
+                    'parada_id' => $parada_id,
+                    'cod' => $cod,
+                    'telefone_invalid' => $telefone,
+                    'motivo' => 'Telefone ausente, inválido ou com letras'
+                ];
+
+                self::logPayload($logData, 'TELEFONE INVÁLIDO – mensagem ignorada.');
+
+                return ['success' => true, 'error' => "Telefone inválido ou ausente: '$telefone'."];
+            }
+
 
             $sqlSolicitacao = "SELECT solicitacao_id FROM orders_paradas WHERE id_parada = :parada_id";
             $stmtSolicitacao = $pdo->prepare($sqlSolicitacao);
