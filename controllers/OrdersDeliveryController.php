@@ -3,6 +3,25 @@ date_default_timezone_set('America/Rio_Branco');
 require_once 'database/db.php';
 
 class OrdersDeliveryController {
+
+    public static function gerarChavePedido(): string {
+        global $pdo;
+
+        $letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        do {
+            $chave = '';
+            for ($i = 0; $i < 3; $i++) {
+                $chave .= $letras[random_int(0, 25)];
+                $chave .= random_int(0, 9);
+            }
+            $stmt = $pdo->prepare("SELECT 1 FROM orders_delivery WHERE chave_pedido = :chave LIMIT 1");
+            $stmt->execute([':chave' => $chave]);
+            $exists = $stmt->fetchColumn();
+        } while ($exists);
+
+        return $chave;
+    }
+
     // Cria uma nova entrada na tabela orders_delivery
     public static function createOrderDelivery($data) {
         global $pdo;
@@ -28,8 +47,19 @@ class OrdersDeliveryController {
             }
         }
 
-        $query = "INSERT INTO orders_delivery (cnpj, hash, num_controle, status, modo_de_conta, identificador_conta, hora_abertura, hora_saida, intg_tipo, cod_iapp, tempo_preparo, status_pedido, quantidade_producao, quantidade_produzida, tipo_entrega, cod_ifood)
-          VALUES (:cnpj, :hash, :num_controle, :status, :modo_de_conta, :identificador_conta, :hora_abertura, :hora_saida, :intg_tipo, :cod_iapp, :tempo_preparo, :status_pedido, :quantidade_producao, :quantidade_produzida, :tipo_entrega, :cod_ifood)";
+        $codigo_unico = self::gerarChavePedido();
+
+        $query = "INSERT INTO orders_delivery (
+            cnpj, hash, num_controle, status, modo_de_conta, identificador_conta,
+            hora_abertura, hora_saida, intg_tipo, cod_iapp, tempo_preparo,
+            status_pedido, quantidade_producao, quantidade_produzida,
+            tipo_entrega, cod_ifood, codigo_unico
+        ) VALUES (
+            :cnpj, :hash, :num_controle, :status, :modo_de_conta, :identificador_conta,
+            :hora_abertura, :hora_saida, :intg_tipo, :cod_iapp, :tempo_preparo,
+            :status_pedido, :quantidade_producao, :quantidade_produzida,
+            :tipo_entrega, :cod_ifood, :codigo_unico
+        )";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':cnpj', $data['cnpj']);
         $stmt->bindParam(':hash', $data['hash']);
@@ -47,6 +77,7 @@ class OrdersDeliveryController {
         $stmt->bindParam(':quantidade_produzida', $data['quantidade_produzida']);
         $stmt->bindParam(':tipo_entrega', $data['tipo_entrega']);
         $stmt->bindParam(':cod_ifood', $cod_ifood);
+        $stmt->bindParam(':codigo_unico', $codigo_unico);
 
         $executed = $stmt->execute();
 

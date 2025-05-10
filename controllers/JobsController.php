@@ -371,6 +371,8 @@ class JobsController
     {
         global $pdo;
 
+        $dataHora = date('Y-m-d H:i:s');
+
         try {
             // Extrair dados da mensagem
             $telefone = $mensagem['telefone'] ?? null;
@@ -385,18 +387,24 @@ class JobsController
             $messageId = $retorno['messages'][0]['id'] ?? null;
             $status = $retorno['messages'][0]['message_status'] ?? null;
 
+            // Buscar chave_pedido correspondente ao cod_pedido
+            $stmtChave = $pdo->prepare("SELECT chave_pedido FROM orders_delivery WHERE cod_iapp = :cod_pedido LIMIT 1");
+            $stmtChave->execute([':cod_pedido' => $cod]);
+            $chavePedido = $stmtChave->fetchColumn();
+
+
             // Inserir no banco
             $stmt = $pdo->prepare("
-            INSERT INTO whatsapp_mensages (
-                telefone, identificador_conta, cod_pedido, nome_taxista,
-                placa_veiculo, link_rastreio, wa_id, message_id, message_status
-            ) VALUES (
-                :telefone, :identificador_conta, :cod_pedido, :nome_taxista,
-                :placa_veiculo, :link_rastreio, :wa_id, :message_id, :message_status
-            )
-        ");
-
-
+                INSERT INTO whatsapp_mensages (
+                    telefone, identificador_conta, cod_pedido, nome_taxista,
+                    placa_veiculo, link_rastreio, wa_id, message_id, message_status,
+                    created_at, updated_at, chave_pedido
+                ) VALUES (
+                    :telefone, :identificador_conta, :cod_pedido, :nome_taxista,
+                    :placa_veiculo, :link_rastreio, :wa_id, :message_id, :message_status,
+                    :created_at, :updated_at, :chave_pedido
+                )
+            ");
 
             $stmt->execute([
                 ':telefone' => $telefone,
@@ -407,7 +415,10 @@ class JobsController
                 ':link_rastreio' => $link,
                 ':wa_id' => $waId,
                 ':message_id' => $messageId,
-                ':message_status' => $status
+                ':message_status' => $status,
+                ':created_at' => $dataHora,
+                ':updated_at' => $dataHora,
+                ':chave_pedido' => $chavePedido
             ]);
 
             return true;
@@ -416,5 +427,6 @@ class JobsController
             return false;
         }
     }
+
 
 }
