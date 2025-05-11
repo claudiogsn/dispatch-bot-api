@@ -239,49 +239,63 @@ class OrdersDeliveryController {
     public static function getOrdersDeliveryByPeriod($start, $end) {
         global $pdo;
 
+        // Validações básicas
         if (!$start || !$end) {
-
-            return array('error' => 'Missing required fields for getOrdersByPeriod.');
+            return ['error' => 'Missing required fields for getOrdersByPeriod.'];
         }
 
         if ($start > $end) {
-            return array('error' => 'Invalid date range.');
+            return ['error' => 'Invalid date range.'];
         }
 
         if (strtotime($start) === false || strtotime($end) === false) {
-            return array('error' => 'Invalid date format.');
+            return ['error' => 'Invalid date format.'];
         }
 
-        $query = "SELECT 
-             od.*,
+        // Consulta otimizada com UNION ALL
+        $query = "
+        -- Parte HUB-IFOOD
+        SELECT 
+            od.*,
             COALESCE(op.link_rastreio_pedido, 'Sem registro') AS link_rastreio_pedido,
-            COALESCE(op.solicitacao_id, 'Sem registro') AS solicitacao_id,
-            COALESCE(op.id_parada, 'Sem registro') AS id_parada
-        FROM 
-            orders_delivery od
-        LEFT JOIN 
-            orders_paradas op
-        ON 
-            (
-                (od.intg_tipo = 'HUB-IFOOD' AND od.cod_ifood IS NOT NULL AND od.cod_ifood != '' 
-                    AND od.cod_ifood = op.numero_pedido
-                    AND EXISTS (
-                        SELECT 1 
-                        FROM orders_solicitacoes os
-                        WHERE os.solicitacao_id = op.solicitacao_id
-                        AND DATE(os.data_hora_solicitacao) = DATE(od.hora_abertura)
-                    )
-                )
-                OR
-                (od.intg_tipo != 'HUB-IFOOD' AND od.cod_iapp IS NOT NULL AND od.cod_iapp != '' AND od.cod_iapp = op.numero_pedido)
+            COALESCE(op.solicitacao_id, 'Sem registro')       AS solicitacao_id,
+            COALESCE(op.id_parada, 'Sem registro')            AS id_parada
+        FROM orders_delivery od
+        LEFT JOIN orders_paradas op 
+            ON od.cod_ifood = op.numero_pedido
+            AND EXISTS (
+                SELECT 1
+                FROM orders_solicitacoes os
+                WHERE os.solicitacao_id = op.solicitacao_id
+                  AND os.data_hora_solicitacao >= DATE(od.hora_abertura)
+                  AND os.data_hora_solicitacao < DATE(od.hora_abertura + INTERVAL 1 DAY)
             )
-        WHERE 
-            od.status IN (1, -1, 2) 
-            AND od.hora_abertura >= :start 
-            AND od.hora_abertura <= :end
-        ORDER BY 
-            od.hora_saida DESC;
+        WHERE od.intg_tipo = 'HUB-IFOOD'
+          AND od.cod_ifood IS NOT NULL
+          AND od.cod_ifood != ''
+          AND od.status IN (1, -1, 2)
+          AND od.hora_abertura BETWEEN :start AND :end
+
+        UNION ALL
+
+        -- Parte NÃO HUB-IFOOD
+        SELECT 
+            od.*,
+            COALESCE(op.link_rastreio_pedido, 'Sem registro') AS link_rastreio_pedido,
+            COALESCE(op.solicitacao_id, 'Sem registro')       AS solicitacao_id,
+            COALESCE(op.id_parada, 'Sem registro')            AS id_parada
+        FROM orders_delivery od
+        LEFT JOIN orders_paradas op 
+            ON od.cod_iapp = op.numero_pedido
+        WHERE od.intg_tipo != 'HUB-IFOOD'
+          AND od.cod_iapp IS NOT NULL
+          AND od.cod_iapp != ''
+          AND od.status IN (1, -1, 2)
+          AND od.hora_abertura BETWEEN :start AND :end
+
+        ORDER BY hora_saida DESC;
     ";
+
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':start', $start);
         $stmt->bindParam(':end', $end);
@@ -289,6 +303,7 @@ class OrdersDeliveryController {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
 
 
     public static function calculateTimesByCompositeKey($cnpj, $hash, $num_controle) {
