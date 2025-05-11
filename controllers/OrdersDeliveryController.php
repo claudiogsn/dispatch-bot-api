@@ -30,7 +30,7 @@ class OrdersDeliveryController {
         $data = array_map('trim', $data);
 
         // Criar log da execução
-        $logFile = __DIR__ . '/createOrderDelivery.log'; // Caminho do arquivo na mesma pasta
+        $logFile = __DIR__ . '/createOrder.log'; // Caminho do arquivo na mesma pasta
         $logMessage = "Recebido em " . date('Y-m-d H:i:s') . ":\n" .
             "DATA: " . json_encode($data, JSON_PRETTY_PRINT) . "\n\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
@@ -47,18 +47,18 @@ class OrdersDeliveryController {
             }
         }
 
-        $codigo_unico = self::gerarChavePedido();
+        $chave_pedido = self::gerarChavePedido();
 
         $query = "INSERT INTO orders_delivery (
             cnpj, hash, num_controle, status, modo_de_conta, identificador_conta,
             hora_abertura, hora_saida, intg_tipo, cod_iapp, tempo_preparo,
             status_pedido, quantidade_producao, quantidade_produzida,
-            tipo_entrega, cod_ifood, codigo_unico
+            tipo_entrega, cod_ifood, chave_pedido
         ) VALUES (
             :cnpj, :hash, :num_controle, :status, :modo_de_conta, :identificador_conta,
             :hora_abertura, :hora_saida, :intg_tipo, :cod_iapp, :tempo_preparo,
             :status_pedido, :quantidade_producao, :quantidade_produzida,
-            :tipo_entrega, :cod_ifood, :codigo_unico
+            :tipo_entrega, :cod_ifood, :chave_pedido
         )";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':cnpj', $data['cnpj']);
@@ -77,7 +77,7 @@ class OrdersDeliveryController {
         $stmt->bindParam(':quantidade_produzida', $data['quantidade_produzida']);
         $stmt->bindParam(':tipo_entrega', $data['tipo_entrega']);
         $stmt->bindParam(':cod_ifood', $cod_ifood);
-        $stmt->bindParam(':codigo_unico', $codigo_unico);
+        $stmt->bindParam(':chave_pedido', $chave_pedido);
 
         $executed = $stmt->execute();
 
