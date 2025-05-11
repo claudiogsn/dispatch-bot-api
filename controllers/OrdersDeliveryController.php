@@ -512,7 +512,8 @@ class OrdersDeliveryController {
         $query = "
         SELECT 
             od.*,
-            wm.identificador_conta AS nome_cliente
+            wm.identificador_conta AS nome_cliente,
+            od.telefone
         FROM orders_delivery od
         LEFT JOIN whatsapp_mensages wm ON wm.chave_pedido = od.chave_pedido
         WHERE od.chave_pedido = :chave_pedido
@@ -523,8 +524,41 @@ class OrdersDeliveryController {
         $stmt->bindParam(':chave_pedido', $chave_pedido);
         $stmt->execute();
 
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($pedido) {
+            if (!empty($pedido['telefone'])) {
+                $pedido['telefone'] = self::formatarTelefone($pedido['telefone']);
+            }
+
+            if (!empty($pedido['hora_abertura']) && $pedido['hora_abertura'] !== '0000-00-00 00:00:00') {
+                $pedido['hora_abertura'] = self::formatarDataHora($pedido['hora_abertura']);
+            }
+        }
+
+        return $pedido;
     }
+
+    private static function formatarTelefone($telefone)
+    {
+        $telefone = preg_replace('/[^0-9]/', '', $telefone);
+        if (strlen($telefone) === 11) {
+            return sprintf("(%s) %s-%s",
+                substr($telefone, 0, 2),
+                substr($telefone, 2, 5),
+                substr($telefone, 7)
+            );
+        }
+        return $telefone;
+    }
+
+    private static function formatarDataHora($data)
+    {
+        $dt = DateTime::createFromFormat('Y-m-d H:i:s', $data);
+        return $dt ? $dt->format('d/m/Y H:i') : $data;
+    }
+
+
 
     public static function marcarNpsComoRespondido($chave_pedido)
     {
