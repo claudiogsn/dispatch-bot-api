@@ -505,10 +505,42 @@ class OrdersDeliveryController {
         return $stmt->execute();
     }
 
+    public static function getPedidoByChave($chave_pedido)
+    {
+        global $pdo;
 
+        $query = "
+        SELECT 
+            od.*,
+            wm.identificador_conta AS nome_cliente
+        FROM orders_delivery od
+        LEFT JOIN whatsapp_mensages wm ON wm.chave_pedido = od.chave_pedido
+        WHERE od.chave_pedido = :chave_pedido
+        LIMIT 1
+    ";
 
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':chave_pedido', $chave_pedido);
+        $stmt->execute();
 
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 
+    public static function marcarNpsComoRespondido($chave_pedido)
+    {
+        global $pdo;
+
+        if (!$chave_pedido) {
+            throw new Exception("Campo 'chave_pedido' é obrigatório.");
+        }
+
+        $query = "UPDATE whatsapp_mensages SET nps = 1 WHERE chave_pedido = :chave_pedido";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':chave_pedido', $chave_pedido);
+        $stmt->execute();
+
+        return ['updated' => $stmt->rowCount()];
+    }
 
 
 

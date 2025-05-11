@@ -23,6 +23,7 @@ require_once 'controllers/LogController.php';
 require_once 'controllers/OrdersDeliveryController.php';
 require_once 'controllers/ClientOrders.php';
 require_once 'controllers/JobsController.php';
+require_once 'controllers/NpsController.php';
 
 $json = file_get_contents('php://input');
 $data = json_decode($json, true);
@@ -171,6 +172,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     throw new Exception("Missing required fields for changeStatusPedido.");
                 }
                 break;
+            case 'getPedidoByChave':
+                if (isset($requestData['chave_pedido'])) {
+                    $response = OrdersDeliveryController::getPedidoByChave($requestData['chave_pedido']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required fields for changeStatusPedido.");
+                }
+                break;
 
             // Métodos para JobsController
             case 'fetchSolicitacoesSemRastreio':
@@ -221,6 +230,91 @@ if (isset($data['method']) && isset($data['data'])) {
                     throw new Exception("Missing required fields for salvarLogWhatsapp.");
                 }
             break;
+
+            // Métodos para NpsController
+            case 'CreateQuestion':
+                if (isset($requestData['perguntas']) && is_array($requestData['perguntas'])) {
+                    $response = NpsController::CreateQuestion($requestData);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing or invalid field: perguntas.");
+                }
+                break;
+
+            case 'IndexQuestions':
+                $response = NpsController::ListQuestions();
+                break;
+
+            case 'ListQuestionsActive':
+                if(isset($requestData['formulario'])) {
+                    $response = NpsController::ListQuestionsActive($requestData['formulario']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required field: formulario.");
+                }
+                break;
+
+            case 'ShowQuestion':
+                if (isset($requestData['id'])) {
+                    $response = NpsController::ShowQuestion($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required field: id.");
+                }
+                break;
+
+            case 'UpdateQuestion':
+                if (isset($requestData['perguntas']) && is_array($requestData['perguntas'])) {
+                    $response = NpsController::UpdateQuestion($requestData);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing or invalid field: perguntas.");
+                }
+                break;
+
+            case 'DeleteQuestion':
+                if (isset($requestData['id'])) {
+                    $response = NpsController::DeleteQuestion($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required field: id.");
+                }
+                break;
+            case 'CreateRespostas':
+                if (isset($requestData['chave_pedido'], $requestData['respostas']) && is_array($requestData['respostas'])) {
+                    $response = NpsController::CreateRespostas($requestData);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing or invalid fields for CreateRespostas.");
+                }
+                break;
+
+            case 'ListarRespostasPorChavePedido':
+                if (isset($requestData['chave_pedido'])) {
+                    $response = NpsController::ListarRespostasPorChavePedido($requestData['chave_pedido']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing field: chave_pedido.");
+                }
+                break;
+            case 'FormularioJaRespondido':
+                if (isset($requestData['chave_pedido'], $requestData['formulario'])) {
+                    $response = NpsController::FormularioJaRespondido(
+                        $requestData['chave_pedido'],
+                        $requestData['formulario']
+                    );
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required fields: chave_pedido and formulario.");
+                }
+                break;
+            case 'UploadArquivo':
+                $response = NpsController::UploadArquivo();
+                break;
+
+
+
+
 
             default:
                 http_response_code(405);
