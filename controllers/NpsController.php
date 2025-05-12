@@ -410,5 +410,227 @@ class NpsController
         return json_encode(['success' => true, 'url' => $url]);
     }
 
+    public static function ListarRespostasPorPedido($data): array
+    {
+        global $pdo;
+
+        $chave_pedido = $data['chave_pedido'] ?? null;
+
+        if (!$chave_pedido) {
+            http_response_code(400);
+            return ['success' => false, 'error' => 'Chave do pedido não fornecida.'];
+        }
+
+        try {
+            $stmt = $pdo->prepare("
+            SELECT 
+                r.id,
+                r.pergunta_id,
+                p.titulo AS pergunta,
+                r.resposta,
+                r.created_at,
+                r.ip,
+                r.user_agent,
+                r.tipo_dispositivo,
+                r.plataforma,
+                r.latitude,
+                r.longitude
+            FROM formulario_respostas r
+            LEFT JOIN formulario_perguntas p ON p.id = r.pergunta_id
+            WHERE r.chave_pedido = :chave_pedido
+            ORDER BY r.created_at ASC
+        ");
+            $stmt->execute([':chave_pedido' => $chave_pedido]);
+            $respostas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return ['success' => true, 'respostas' => $respostas];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['success' => false, 'error' => 'Erro ao buscar respostas: ' . $e->getMessage()];
+        }
+    }
+
+    public static function ListarTodasAsRespostas(): array
+    {
+        global $pdo;
+
+        try {
+            $stmt = $pdo->prepare("
+            SELECT 
+                r.id,
+                r.chave_pedido,
+                r.pergunta_id,
+                p.titulo AS pergunta,
+                r.resposta,
+                r.created_at,
+                r.ip,
+                r.user_agent,
+                r.tipo_dispositivo,
+                r.plataforma,
+                r.latitude,
+                r.longitude
+            FROM formulario_respostas r
+            LEFT JOIN formulario_perguntas p ON p.id = r.pergunta_id
+            ORDER BY r.created_at DESC
+        ");
+            $stmt->execute();
+            $respostas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return ['success' => true, 'respostas' => $respostas];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['success' => false, 'error' => 'Erro ao buscar respostas: ' . $e->getMessage()];
+        }
+    }
+    public static function ListarAgrupadoPorPedido(): array
+    {
+        global $pdo;
+
+        try {
+            $stmt = $pdo->prepare("
+            SELECT 
+                r.chave_pedido,
+                r.created_at,
+                r.ip,
+                r.user_agent,
+                r.tipo_dispositivo,
+                r.plataforma,
+                r.latitude,
+                r.longitude,
+                r.pergunta_id,
+                p.titulo AS pergunta,
+                r.resposta,
+                od.identificador_conta,
+                od.telefone,
+                od.tipo_entrega,
+                od.cod_iapp
+            FROM formulario_respostas r
+            LEFT JOIN formulario_perguntas p ON p.id = r.pergunta_id
+            LEFT JOIN orders_delivery od ON od.chave_pedido = r.chave_pedido
+            ORDER BY r.chave_pedido, r.created_at
+        ");
+            $stmt->execute();
+            $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $agrupados = [];
+
+            foreach ($resultados as $row) {
+                $chave = $row['chave_pedido'];
+
+                if (!isset($agrupados[$chave])) {
+                    $agrupados[$chave] = [
+                        'chave_pedido' => $row['chave_pedido'],
+                        'cod_iapp' => $row['cod_iapp'],
+                        'nome_cliente' => ucwords(trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-zA-ZÀ-ÿ\s]/u', '', $row['identificador_conta'])))),
+                        'telefone' => OrdersDeliveryController::formatarTelefone($row['telefone']),
+                        'tipo_entrega' => $row['tipo_entrega'],
+                        'created_at' => $row['created_at'],
+                        'ip' => $row['ip'],
+                        'user_agent' => $row['user_agent'],
+                        'tipo_dispositivo' => $row['tipo_dispositivo'],
+                        'plataforma' => $row['plataforma'],
+                        'latitude' => $row['latitude'],
+                        'longitude' => $row['longitude'],
+                        'respostas' => []
+                    ];
+                }
+
+                $agrupados[$chave]['respostas'][] = [
+                    'pergunta_id' => $row['pergunta_id'],
+                    'pergunta' => $row['pergunta'],
+                    'resposta' => $row['resposta']
+                ];
+            }
+
+            return ['success' => true, 'dados' => array_values($agrupados)];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['success' => false, 'error' => 'Erro ao buscar respostas agrupadas: ' . $e->getMessage()];
+        }
+    }
+
+    public static function GetDetalhesDoPedido($chave_pedido): array
+    {
+        global $pdo;
+
+        if (!$chave_pedido) {
+            return ['success' => false, 'error' => 'Chave do pedido não fornecida.'];
+        }
+
+        try {
+            // 1. Busca os dados do pedido (matriz)
+            $stmtPedido = $pdo->prepare("SELECT * FROM orders_delivery WHERE chave_pedido = :chave LIMIT 1");
+            $stmtPedido->execute([':chave' => $chave_pedido]);
+            $pedido = $stmtPedido->fetch(PDO::FETCH_ASSOC);
+
+            if (!$pedido) {
+                return ['success' => false, 'error' => 'Pedido não encontrado.'];
+            }
+
+            // 2. Formulário de respostas
+            $stmtRespostas = $pdo->prepare("
+            SELECT 
+                r.pergunta_id,
+                p.titulo AS pergunta,
+                r.resposta,
+                r.created_at,
+                r.latitude,
+                r.longitude,
+                r.ip,
+                r.user_agent,
+                r.tipo_dispositivo,
+                r.plataforma
+            FROM formulario_respostas r
+            LEFT JOIN formulario_perguntas p ON p.id = r.pergunta_id
+            WHERE r.chave_pedido = :chave
+        ");
+            $stmtRespostas->execute([':chave' => $chave_pedido]);
+            $respostas = $stmtRespostas->fetchAll(PDO::FETCH_ASSOC);
+
+            // 3. WhatsApp (mensagem enviada)
+            $stmtWhatsApp = $pdo->prepare("
+            SELECT * FROM whatsapp_mensages WHERE chave_pedido = :chave ORDER BY created_at DESC LIMIT 1
+        ");
+            $stmtWhatsApp->execute([':chave' => $chave_pedido]);
+            $mensagemWhatsApp = $stmtWhatsApp->fetch(PDO::FETCH_ASSOC);
+
+            // 4. NPS (mensagem NPS enviada)
+            $stmtNps = $pdo->prepare("
+            SELECT * FROM mensagens_nps WHERE chave_pedido = :chave ORDER BY created_at DESC LIMIT 1
+        ");
+            $stmtNps->execute([':chave' => $chave_pedido]);
+            $mensagemNps = $stmtNps->fetch(PDO::FETCH_ASSOC);
+
+            // 5. Paradas (via cod_iapp ou cod_ifood)
+            $paradas = [];
+            if ($pedido['intg_tipo'] === 'DELIVERY-DIRETO' && $pedido['cod_iapp']) {
+                $stmtParadas = $pdo->prepare("SELECT * FROM orders_paradas WHERE numero_pedido = :cod");
+                $stmtParadas->execute([':cod' => $pedido['cod_iapp']]);
+                $paradas = $stmtParadas->fetchAll(PDO::FETCH_ASSOC);
+            } elseif ($pedido['intg_tipo'] === 'HUB-IFOOD' && $pedido['cod_ifood']) {
+                $stmtParadas = $pdo->prepare("SELECT * FROM orders_paradas WHERE numero_pedido = :cod");
+                $stmtParadas->execute([':cod' => $pedido['cod_ifood']]);
+                $paradas = $stmtParadas->fetchAll(PDO::FETCH_ASSOC);
+            }
+
+            return [
+                'success' => true,
+                'pedido' => $pedido,
+                'respostas' => $respostas,
+                'whatsapp_mensagem' => $mensagemWhatsApp,
+                'mensagem_nps' => $mensagemNps,
+                'paradas' => $paradas
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['success' => false, 'error' => 'Erro ao buscar detalhes: ' . $e->getMessage()];
+        }
+    }
+
+
+
+
+
+
 
 }

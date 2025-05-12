@@ -539,7 +539,7 @@ class OrdersDeliveryController {
         return $pedido;
     }
 
-    private static function formatarTelefone($telefone)
+    public static function formatarTelefone($telefone)
     {
         $telefone = preg_replace('/[^0-9]/', '', $telefone);
         if (strlen($telefone) === 11) {

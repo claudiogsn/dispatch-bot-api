@@ -335,7 +335,20 @@ if (isset($data['method']) && isset($data['data'])) {
                     throw new Exception("Missing or invalid field: data (expected array of pedidos).");
                 }
                 break;
-
+            case 'ListarTodasAsRespostas':
+                $response = NpsController::ListarTodasAsRespostas();
+                break;
+            case 'ListarAgrupadoPorPedido':
+                $response = NpsController::ListarAgrupadoPorPedido();
+                break;
+            case 'GetDetalhesDoPedido':
+                if (isset($requestData['chave_pedido'])) {
+                    $response = NpsController::GetDetalhesDoPedido($requestData['chave_pedido']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing field: chave_pedido.");
+                }
+                break;
 
 
 
