@@ -131,6 +131,8 @@ class NpsController
 
     public static function CreateRespostas($data)
     {
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+
         global $pdo;
 
         $chave_pedido = $data['chave_pedido'] ?? null;
@@ -178,14 +180,15 @@ class NpsController
 
                 // Insere a resposta
                 $stmtInsert = $pdo->prepare("
-                INSERT INTO formulario_respostas (pergunta_id, chave_pedido, resposta, ip)
-                VALUES (:pergunta_id, :chave_pedido, :resposta, :ip)
-            ");
+                    INSERT INTO formulario_respostas (pergunta_id, chave_pedido, resposta, ip, user_agent)
+                    VALUES (:pergunta_id, :chave_pedido, :resposta, :ip, :user_agent)
+                ");
                 $stmtInsert->execute([
                     ':pergunta_id' => $pergunta_id,
                     ':chave_pedido' => $chave_pedido,
                     ':resposta' => $resposta_valor,
-                    ':ip' => $ip
+                    ':ip' => $ip,
+                    ':user_agent' => $userAgent
                 ]);
             }
 
