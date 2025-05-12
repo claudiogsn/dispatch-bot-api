@@ -311,6 +311,20 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'UploadArquivo':
                 $response = NpsController::UploadArquivo();
                 break;
+            case 'getOrdersToNps':
+                $response = JobsController::getOrdersToNps();
+                break;
+            case 'sendNpsToQueue':
+                if (is_array($requestData)) {
+                    $response = JobsController::sendNpsToQueue($requestData);
+                } else {
+                    print_r($requestData['data']);
+                    http_response_code(400);
+                    throw new Exception("Missing or invalid field: data (expected array of pedidos).");
+                }
+                break;
+
+
 
 
 

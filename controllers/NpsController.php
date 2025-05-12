@@ -25,8 +25,8 @@ class NpsController
                 continue;
             }
 
-            $sql = "INSERT INTO formulario_perguntas (formulario, titulo, subtitulo, metodo_resposta, ativo)
-                    VALUES (:formulario, :titulo, :subtitulo, :metodo_resposta, :ativo, :created_at, :updated_at)";
+            $sql = "INSERT INTO formulario_perguntas (formulario, titulo, subtitulo, metodo_resposta, ativo, created_at, updated_at)
+                VALUES (:formulario, :titulo, :subtitulo, :metodo_resposta, :ativo, :created_at, :updated_at)";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
                 ':formulario' => $pergunta['formulario'],
@@ -43,6 +43,7 @@ class NpsController
 
         return ['created_ids' => $ids];
     }
+
 
     public static function ListQuestions()
     {

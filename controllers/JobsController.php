@@ -428,5 +428,164 @@ class JobsController
         }
     }
 
+    public static function getOrdersToNps() {
+        global $pdo;
+
+        $sql = "SELECT * FROM whatsapp_mensages WHERE nps = 0";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute();
+        $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($orders)) {
+            return ['success' => false, 'message' => 'Nenhum pedido encontrado.'];
+        }
+
+        $limite = new DateTime();
+        $limite->modify('-60 minutes');
+
+        $filtrados = array_filter($orders, function ($order) use ($limite) {
+            return new DateTime($order['created_at']) <= $limite;
+        });
+
+        if (empty($filtrados)) {
+            return ['success' => false, 'message' => 'Nenhum pedido com tempo mínimo.'];
+        }
+
+        $resultado = array_map(function ($order) {
+            return [
+                'chave_pedido' => $order['chave_pedido'],
+                'telefone' => $order['telefone'],
+                'identificador_conta' => $order['identificador_conta'],
+                'cod' => $order['cod_pedido'],
+                'link_nps' => 'https://vemprodeck.com.br/avaliar/' . $order['chave_pedido']
+            ];
+        }, $filtrados);
+
+        return ['success' => true, 'data' => array_values($resultado)];
+    }
+
+    public static function sendNpsToQueue(array $data): array
+    {
+        $config = json_decode(file_get_contents(__DIR__ . '/aws-config.json'), true);
+        $aws = $config['aws'];
+
+        $accessKey = $aws['accessKeyId'];
+        $secretKey = $aws['secretAccessKey'];
+        $region = $aws['region'];
+        $service = $aws['service'];
+        $queueUrl = 'https://sqs.us-east-1.amazonaws.com/209479293352/nps-queue'; // Fila de NPS
+
+        $now = gmdate('Ymd\THis\Z');
+        $date = gmdate('Ymd');
+
+        $results = [];
+
+        foreach ($data as $pedido) {
+            try {
+                $messageBody = json_encode([
+                    'chave_pedido' => $pedido['chave_pedido'],
+                    'telefone' => $pedido['telefone'],
+                    'identificador_conta' => $pedido['identificador_conta'],
+                    'cod' => $pedido['cod'],
+                    'link_nps' => $pedido['link_nps']
+                ]);
+
+                $params = http_build_query([
+                    'Action' => 'SendMessage',
+                    'MessageBody' => $messageBody,
+                    'Version' => '2012-11-05'
+                ]);
+
+                $parsedUrl = parse_url($queueUrl);
+                $host = $parsedUrl['host'];
+                $canonicalUri = $parsedUrl['path'];
+                $canonicalHeaders = "host:$host\nx-amz-date:$now\n";
+                $signedHeaders = 'host;x-amz-date';
+                $payloadHash = hash('sha256', $params);
+
+                $canonicalRequest = implode("\n", [
+                    'POST',
+                    $canonicalUri,
+                    '',
+                    $canonicalHeaders,
+                    $signedHeaders,
+                    $payloadHash
+                ]);
+
+                $algorithm = 'AWS4-HMAC-SHA256';
+                $credentialScope = "$date/$region/$service/aws4_request";
+                $stringToSign = implode("\n", [
+                    $algorithm,
+                    $now,
+                    $credentialScope,
+                    hash('sha256', $canonicalRequest)
+                ]);
+
+                // Assinatura AWS v4
+                $sign = function ($key, $msg) {
+                    return hash_hmac('sha256', $msg, $key, true);
+                };
+                $kDate = $sign('AWS4' . $secretKey, $date);
+                $kRegion = $sign($kDate, $region);
+                $kService = $sign($kRegion, $service);
+                $kSigning = $sign($kService, 'aws4_request');
+                $signature = hash_hmac('sha256', $stringToSign, $kSigning);
+
+                $authorizationHeader = "$algorithm Credential=$accessKey/$credentialScope, SignedHeaders=$signedHeaders, Signature=$signature";
+                $headers = [
+                    "Authorization: $authorizationHeader",
+                    "x-amz-date: $now",
+                    "Content-Type: application/x-www-form-urlencoded"
+                ];
+
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $queueUrl);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $params);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+
+                $response = curl_exec($ch);
+                $error = curl_error($ch);
+                curl_close($ch);
+
+                if ($error) {
+                    $results[] = ['success' => false, 'pedido' => $pedido['chave_pedido'], 'error' => $error];
+                } else {
+                    // Log opcional
+                    self::logPayload(['nps_json' => $messageBody], $response);
+                    $results[] = ['success' => true, 'pedido' => $pedido['chave_pedido'], 'response' => $response];
+                }
+
+            } catch (Exception $e) {
+                $results[] = ['success' => false, 'pedido' => $pedido['chave_pedido'], 'error' => $e->getMessage()];
+            }
+
+            self::ConfirmSendNps($pedido['chave_pedido']);
+        }
+
+        return $results;
+    }
+
+    public static function ConfirmSendNps($chave_pedido): array
+{
+        global $pdo;
+
+        try {
+            $sql = "UPDATE whatsapp_mensages SET nps = 1 WHERE chave_pedido = :chave_pedido";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([':chave_pedido' => $chave_pedido]);
+
+            return ['success' => true, 'message' => 'NPS enviado com sucesso.'];
+        } catch (PDOException $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+
+}
+
+
+
 
 }
