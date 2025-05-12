@@ -77,7 +77,7 @@ class NpsController
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public static function UpdateQuestion($data): array
+    public static function UpdateQuestionArray($data): array
     {
         global $pdo;
 
@@ -119,6 +119,42 @@ class NpsController
         return ['updated_count' => $updated];
     }
 
+    public static function UpdateQuestion(array $pergunta ): array
+    {
+
+        global $pdo;
+
+        if (!isset($pergunta['id'])) {
+            throw new Exception("Campo 'id' é obrigatório.");
+        }
+
+        $camposPermitidos = ['formulario', 'titulo', 'subtitulo', 'metodo_resposta', 'ativo'];
+        $setClauses = [];
+        $params = [':id' => $pergunta['id']];
+
+        foreach ($camposPermitidos as $campo) {
+            if (isset($pergunta[$campo])) {
+                $setClauses[] = "$campo = :$campo";
+                $params[":$campo"] = $pergunta[$campo];
+            }
+        }
+
+        if (empty($setClauses)) {
+            throw new Exception("Nenhum campo para atualizar foi fornecido.");
+        }
+
+        // Sempre atualiza o campo updated_at
+        $setClauses[] = "updated_at = CURRENT_TIMESTAMP";
+
+        $sql = "UPDATE formulario_perguntas SET " . implode(', ', $setClauses) . " WHERE id = :id";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return ['updated_count' => $stmt->rowCount()];
+    }
+
+
     public static function DeleteQuestion($id): array
     {
         global $pdo;
@@ -151,6 +187,8 @@ class NpsController
         $chave_pedido = $data['chave_pedido'] ?? null;
         $respostas = $data['respostas'] ?? [];
         $ip = $_SERVER['REMOTE_ADDR'];
+        $latitude = $data['latitude'] ?? null;
+        $longitude = $data['longitude'] ?? null;
 
         if (!$chave_pedido || !is_array($respostas) || count($respostas) === 0) {
             http_response_code(400);
@@ -193,9 +231,30 @@ class NpsController
 
                 // Insere a resposta
                 $stmtInsert = $pdo->prepare("
-                  INSERT INTO formulario_respostas (pergunta_id, chave_pedido, resposta, ip, user_agent, tipo_dispositivo, plataforma)
-                  VALUES (:pergunta_id, :chave_pedido, :resposta, :ip, :user_agent, :tipo_dispositivo, :plataforma)
+                      INSERT INTO formulario_respostas (
+                        pergunta_id, 
+                        chave_pedido, 
+                        resposta, 
+                        ip, 
+                        user_agent, 
+                        tipo_dispositivo, 
+                        plataforma,
+                        latitude,
+                        longitude
+                      )
+                      VALUES (
+                        :pergunta_id, 
+                        :chave_pedido, 
+                        :resposta, 
+                        :ip, 
+                        :user_agent, 
+                        :tipo_dispositivo, 
+                        :plataforma,
+                        :latitude,
+                        :longitude
+                      )
                 ");
+
 
                 $stmtInsert->execute([
                     ':pergunta_id' => $pergunta_id,
@@ -204,7 +263,9 @@ class NpsController
                     ':ip' => $ip,
                     ':user_agent' => $userAgent,
                     ':tipo_dispositivo' => $tipoDispositivo,
-                    ':plataforma' => $plataforma
+                    ':plataforma' => $plataforma,
+                    ':latitude' => $latitude,
+                    ':longitude' => $longitude
                 ]);
             }
 

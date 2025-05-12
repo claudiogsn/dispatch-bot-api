@@ -265,7 +265,8 @@ if (isset($data['method']) && isset($data['data'])) {
 
             case 'UpdateQuestion':
                 if (isset($requestData['perguntas']) && is_array($requestData['perguntas'])) {
-                    $response = NpsController::UpdateQuestion($requestData);
+                    $response = NpsController::UpdateQuestion($requestData['perguntas'][0]);
+
                 } else {
                     http_response_code(400);
                     throw new Exception("Missing or invalid field: perguntas.");
