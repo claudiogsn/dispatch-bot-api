@@ -552,7 +552,7 @@ class OrdersDeliveryController {
         return $telefone;
     }
 
-    private static function formatarDataHora($data)
+    public static function formatarDataHora($data)
     {
         $dt = DateTime::createFromFormat('Y-m-d H:i:s', $data);
         return $dt ? $dt->format('d/m/Y H:i') : $data;

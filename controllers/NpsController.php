@@ -524,7 +524,7 @@ class NpsController
                         'nome_cliente' => ucwords(trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-zA-ZÀ-ÿ\s]/u', '', $row['identificador_conta'])))),
                         'telefone' => OrdersDeliveryController::formatarTelefone($row['telefone']),
                         'tipo_entrega' => $row['tipo_entrega'],
-                        'created_at' => $row['created_at'],
+                        'created_at' => OrdersDeliveryController::formatarDataHora($row['created_at']),
                         'ip' => $row['ip'],
                         'user_agent' => $row['user_agent'],
                         'tipo_dispositivo' => $row['tipo_dispositivo'],
