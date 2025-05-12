@@ -129,53 +129,54 @@ class NpsController
         return ['deleted' => $stmt->rowCount()];
     }
 
-    public static function CreateRespostas($data): array
+    public static function CreateRespostas($data)
     {
         global $pdo;
 
+        $chave_pedido = $data['chave_pedido'] ?? null;
+        $respostas = $data['respostas'] ?? [];
+        $ip = $_SERVER['REMOTE_ADDR'];
+
+        if (!$chave_pedido || !is_array($respostas) || count($respostas) === 0) {
+            http_response_code(400);
+            return ['success' => false, 'error' => 'Chave do pedido ou respostas inválidas.'];
+        }
+
         try {
-            if (empty($data['chave_pedido'])) {
-                http_response_code(400);
-                return ['success' => false, 'error' => "Campo 'chave_pedido' é obrigatório."];
-            }
-
-            if (!isset($data['respostas']) || !is_array($data['respostas']) || count($data['respostas']) === 0) {
-                http_response_code(400);
-                return ['success' => false, 'error' => "Campo 'respostas' deve ser um array com ao menos uma entrada."];
-            }
-
-            $chave_pedido = $data['chave_pedido'];
-            $ip = $_SERVER['REMOTE_ADDR'] ?? null;
-
             $pdo->beginTransaction();
 
-            foreach ($data['respostas'] as $resposta) {
-                if (!isset($resposta['pergunta_id'], $resposta['resposta'])) {
-                    throw new Exception("Cada resposta deve conter 'pergunta_id' e 'resposta'.");
+            foreach ($respostas as $resposta) {
+                if (!isset($resposta['pergunta_id'])) {
+                    throw new Exception("Cada resposta deve conter 'pergunta_id'.");
                 }
 
                 $pergunta_id = $resposta['pergunta_id'];
+                $resposta_valor = $resposta['resposta'] ?? null;
 
-                $stmtCheck = $pdo->prepare("
-                SELECT 1 FROM formulario_respostas 
-                WHERE chave_pedido = :chave_pedido AND pergunta_id = :pergunta_id
-                LIMIT 1
-            ");
-                $stmtCheck->execute([
-                    ':chave_pedido' => $chave_pedido,
-                    ':pergunta_id' => $pergunta_id
-                ]);
-
-                if ($stmtCheck->fetchColumn()) {
-                    $pdo->rollBack();
-                    http_response_code(409);
-                    return [
-                        'success' => false,
-                        'error' => "A pergunta ID $pergunta_id já foi respondida para esse pedido.",
-                        'conflict_pergunta_id' => $pergunta_id
-                    ];
+                // Trata string vazia, espaços e array vazia como null
+                if (is_array($resposta_valor) && count($resposta_valor) === 0) {
+                    $resposta_valor = null;
+                }
+                if (is_string($resposta_valor) && trim($resposta_valor) === '') {
+                    $resposta_valor = null;
                 }
 
+                // Verifica se a pergunta existe e se é obrigatória
+                $stmtObrigatoria = $pdo->prepare("SELECT obrigatoria FROM formulario_perguntas WHERE id = :id LIMIT 1");
+                $stmtObrigatoria->execute([':id' => $pergunta_id]);
+                $obrigatoria = $stmtObrigatoria->fetchColumn();
+
+                if ($obrigatoria === false) {
+                    throw new Exception("Pergunta ID $pergunta_id não encontrada.");
+                }
+
+                // Se for obrigatória e a resposta for nula, lança erro
+                if ((int)$obrigatoria === 1 && $resposta_valor === null) {
+                    http_response_code(400);
+                    throw new Exception("A pergunta ID $pergunta_id é obrigatória e não foi respondida.");
+                }
+
+                // Insere a resposta
                 $stmtInsert = $pdo->prepare("
                 INSERT INTO formulario_respostas (pergunta_id, chave_pedido, resposta, ip)
                 VALUES (:pergunta_id, :chave_pedido, :resposta, :ip)
@@ -183,34 +184,22 @@ class NpsController
                 $stmtInsert->execute([
                     ':pergunta_id' => $pergunta_id,
                     ':chave_pedido' => $chave_pedido,
-                    ':resposta' => $resposta['resposta'],
+                    ':resposta' => $resposta_valor,
                     ':ip' => $ip
                 ]);
             }
 
-            $pdo->commit();
-
+            // Marcar como respondido via controller centralizado
             OrdersDeliveryController::marcarNpsComoRespondido($chave_pedido);
 
-            return [
-                'success' => true,
-                'message' => 'Formulário salvo com sucesso. NPS marcado como respondido.'
-            ];
-
+            $pdo->commit();
+            return ['success' => true];
         } catch (Exception $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-
-            http_response_code(500);
-            return [
-                'success' => false,
-                'error' => 'Erro interno ao salvar respostas.',
-                'exception' => $e->getMessage()
-            ];
+            $pdo->rollBack();
+            http_response_code(400);
+            return ['success' => false, 'error' => $e->getMessage()];
         }
     }
-
 
     public static function ListarRespostasPorChavePedido($chave_pedido)
     {

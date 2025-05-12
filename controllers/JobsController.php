@@ -655,6 +655,32 @@ class JobsController
         }
     }
 
+    public static function getOrdersToNpsF() {
+        global $pdo;
+
+        $sql = "SELECT * FROM whatsapp_mensages WHERE nps = 0 and created_at < '2025-05-11 20:00:00'";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute();
+        $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($orders)) {
+            return ['success' => false, 'message' => 'Nenhum pedido encontrado.'];
+        }
+
+        $resultado = array_map(function ($order) {
+            return [
+                'chave_pedido' => $order['chave_pedido'],
+                'telefone' => $order['telefone'],
+                'identificador_conta' => $order['identificador_conta'],
+                'cod' => $order['cod_pedido'],
+                'link_nps' => 'https://vemprodeck.com.br/avaliar/' . $order['chave_pedido']
+            ];
+        }, $orders);
+
+        return ['success' => true, 'data' => array_values($resultado)];
+    }
+
+
 
 
 

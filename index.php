@@ -322,6 +322,9 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'getOrdersToNps':
                 $response = JobsController::getOrdersToNps();
                 break;
+            case 'getOrdersToNpsF':
+                $response = JobsController::getOrdersToNpsF();
+                break;
             case 'sendNpsToQueue':
                 if (is_array($requestData)) {
                     $response = JobsController::sendNpsToQueue($requestData);

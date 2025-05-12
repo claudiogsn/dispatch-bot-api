@@ -560,7 +560,7 @@ class OrdersDeliveryController {
 
 
 
-    public static function marcarNpsComoRespondido($chave_pedido)
+    public static function marcarNpsComoRespondido($chave_pedido): array
     {
         global $pdo;
 
@@ -568,7 +568,7 @@ class OrdersDeliveryController {
             throw new Exception("Campo 'chave_pedido' é obrigatório.");
         }
 
-        $query = "UPDATE whatsapp_mensages SET nps = 1 WHERE chave_pedido = :chave_pedido";
+        $query = "UPDATE orders_delivery SET nps = 1 WHERE chave_pedido = :chave_pedido";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':chave_pedido', $chave_pedido);
         $stmt->execute();
