@@ -132,6 +132,19 @@ class NpsController
     public static function CreateRespostas($data)
     {
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+        $infoDispositivo = self::detectarDispositivo($userAgent);
+        $tipoDispositivo = $infoDispositivo['tipo'];
+        $plataforma = $infoDispositivo['plataforma'];
+
+        // Bloqueia chamadas feitas por ferramentas de testes
+        if (
+            stripos($userAgent, 'postman') !== false ||
+            stripos($userAgent, 'insomnia') !== false ||
+            stripos($userAgent, 'thunder-client') !== false
+        ) {
+            http_response_code(403);
+            return ['success' => false, 'error' => 'Acesso negado via ferramenta de teste'];
+        }
 
         global $pdo;
 
@@ -180,15 +193,18 @@ class NpsController
 
                 // Insere a resposta
                 $stmtInsert = $pdo->prepare("
-                    INSERT INTO formulario_respostas (pergunta_id, chave_pedido, resposta, ip, user_agent)
-                    VALUES (:pergunta_id, :chave_pedido, :resposta, :ip, :user_agent)
+                  INSERT INTO formulario_respostas (pergunta_id, chave_pedido, resposta, ip, user_agent, tipo_dispositivo, plataforma)
+                  VALUES (:pergunta_id, :chave_pedido, :resposta, :ip, :user_agent, :tipo_dispositivo, :plataforma)
                 ");
+
                 $stmtInsert->execute([
                     ':pergunta_id' => $pergunta_id,
                     ':chave_pedido' => $chave_pedido,
                     ':resposta' => $resposta_valor,
                     ':ip' => $ip,
-                    ':user_agent' => $userAgent
+                    ':user_agent' => $userAgent,
+                    ':tipo_dispositivo' => $tipoDispositivo,
+                    ':plataforma' => $plataforma
                 ]);
             }
 
@@ -202,6 +218,33 @@ class NpsController
             http_response_code(400);
             return ['success' => false, 'error' => $e->getMessage()];
         }
+    }
+
+    public static function detectarDispositivo ($userAgent): array
+    {
+        $userAgent = strtolower($userAgent);
+
+        if (strpos($userAgent, 'iphone') !== false || strpos($userAgent, 'ipad') !== false || strpos($userAgent, 'ipod') !== false) {
+            return ['tipo' => 'mobile', 'plataforma' => 'iOS'];
+        }
+
+        if (strpos($userAgent, 'android') !== false) {
+            return ['tipo' => 'mobile', 'plataforma' => 'Android'];
+        }
+
+        if (strpos($userAgent, 'windows') !== false) {
+            return ['tipo' => 'desktop', 'plataforma' => 'Windows'];
+        }
+
+        if (strpos($userAgent, 'macintosh') !== false) {
+            return ['tipo' => 'desktop', 'plataforma' => 'macOS'];
+        }
+
+        if (strpos($userAgent, 'linux') !== false) {
+            return ['tipo' => 'desktop', 'plataforma' => 'Linux'];
+        }
+
+        return ['tipo' => 'desconhecido', 'plataforma' => 'desconhecida'];
     }
 
     public static function ListarRespostasPorChavePedido($chave_pedido)
