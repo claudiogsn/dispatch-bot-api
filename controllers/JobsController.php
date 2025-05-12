@@ -585,6 +585,77 @@ class JobsController
 
 }
 
+    public static function salvarLogNps(array $mensagem, array $retorno): array
+    {
+        global $pdo;
+
+        $dataHora = date('Y-m-d H:i:s');
+
+        try {
+            // Validação básica dos campos obrigatórios
+            if (
+                empty($mensagem['chave_pedido']) ||
+                empty($mensagem['telefone']) ||
+                empty($mensagem['identificador_conta']) ||
+                empty($mensagem['cod']) ||
+                empty($mensagem['link_nps'])
+            ) {
+                throw new Exception("Campos obrigatórios ausentes no array 'mensagem'.");
+            }
+
+            if (
+                empty($retorno['contacts'][0]['input']) ||
+                empty($retorno['contacts'][0]['wa_id']) ||
+                empty($retorno['messages'][0]['id']) ||
+                empty($retorno['messages'][0]['message_status'])
+            ) {
+                throw new Exception("Campos obrigatórios ausentes no array 'retorno'.");
+            }
+
+            $stmt = $pdo->prepare("
+            INSERT INTO mensagens_nps (
+                chave_pedido, telefone, identificador_conta, cod, link_nps,
+                contact_input, contact_wa_id,
+                message_id, message_status, created_at, updated_at
+            ) VALUES (
+                :chave_pedido, :telefone, :identificador_conta, :cod, :link_nps,
+                :contact_input, :contact_wa_id,
+                :message_id, :message_status,:created_at, :updated_at
+            )
+        ");
+
+            $stmt->execute([
+                ':chave_pedido'      => $mensagem['chave_pedido'],
+                ':telefone'          => $mensagem['telefone'],
+                ':identificador_conta' => $mensagem['identificador_conta'],
+                ':cod'               => $mensagem['cod'],
+                ':link_nps'          => $mensagem['link_nps'],
+                ':contact_input'     => $retorno['contacts'][0]['input'],
+                ':contact_wa_id'     => $retorno['contacts'][0]['wa_id'],
+                ':message_id'        => $retorno['messages'][0]['id'],
+                ':message_status'    => $retorno['messages'][0]['message_status'],
+                ':created_at'        => $dataHora,
+                ':updated_at'        => $dataHora
+
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Mensagem NPS registrada com sucesso.',
+                'id' => $pdo->lastInsertId()
+            ];
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            return [
+                'success' => false,
+                'error' => 'Erro ao registrar mensagem NPS.',
+                'exception' => $e->getMessage()
+            ];
+        }
+    }
+
+
 
 
 

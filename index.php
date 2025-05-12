@@ -224,12 +224,12 @@ if (isset($data['method']) && isset($data['data'])) {
             break;
             case 'salvarLogWhatsapp':
                 if (isset($requestData['mensagem'], $requestData['retorno'])) {
-                        return JobsController::salvarLogWhatsapp($requestData['mensagem'], $requestData['retorno']);
+                    $response = JobsController::salvarLogWhatsapp($requestData['mensagem'], $requestData['retorno']);
                 } else {
                     http_response_code(400);
                     throw new Exception("Missing required fields for salvarLogWhatsapp.");
                 }
-            break;
+                break;
 
             // Métodos para NpsController
             case 'CreateQuestion':
@@ -306,6 +306,14 @@ if (isset($data['method']) && isset($data['data'])) {
                 } else {
                     http_response_code(400);
                     throw new Exception("Missing required fields: chave_pedido and formulario.");
+                }
+                break;
+            case 'salvarLogNps':
+                if (isset($requestData['mensagem'], $requestData['retorno'])) {
+                    $response = JobsController::salvarLogNps($requestData['mensagem'], $requestData['retorno']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required fields for salvarLogWhatsapp.");
                 }
                 break;
             case 'UploadArquivo':
