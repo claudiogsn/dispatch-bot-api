@@ -616,11 +616,11 @@ class JobsController
             INSERT INTO mensagens_nps (
                 chave_pedido, telefone, identificador_conta, cod, link_nps,
                 contact_input, contact_wa_id,
-                message_id, message_status, created_at, updated_at
+                message_id, message_status, created_at
             ) VALUES (
                 :chave_pedido, :telefone, :identificador_conta, :cod, :link_nps,
                 :contact_input, :contact_wa_id,
-                :message_id, :message_status,:created_at, :updated_at
+                :message_id, :message_status,:created_at
             )
         ");
 
@@ -634,8 +634,8 @@ class JobsController
                 ':contact_wa_id'     => $retorno['contacts'][0]['wa_id'],
                 ':message_id'        => $retorno['messages'][0]['id'],
                 ':message_status'    => $retorno['messages'][0]['message_status'],
-                ':created_at'        => $dataHora,
-                ':updated_at'        => $dataHora
+                ':created_at'        => $dataHora
+
 
             ]);
 
