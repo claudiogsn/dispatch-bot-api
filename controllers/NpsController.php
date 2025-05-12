@@ -167,6 +167,7 @@ class NpsController
 
     public static function CreateRespostas($data)
     {
+        $dataHora = date('Y-m-d H:i:s');
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
         $infoDispositivo = self::detectarDispositivo($userAgent);
         $tipoDispositivo = $infoDispositivo['tipo'];
@@ -240,7 +241,9 @@ class NpsController
                         tipo_dispositivo, 
                         plataforma,
                         latitude,
-                        longitude
+                        longitude,
+                        created_at,
+                        updated_at
                       )
                       VALUES (
                         :pergunta_id, 
@@ -251,7 +254,9 @@ class NpsController
                         :tipo_dispositivo, 
                         :plataforma,
                         :latitude,
-                        :longitude
+                        :longitude,
+                        :created_at,
+                        :updated_at
                       )
                 ");
 
@@ -265,7 +270,9 @@ class NpsController
                     ':tipo_dispositivo' => $tipoDispositivo,
                     ':plataforma' => $plataforma,
                     ':latitude' => $latitude,
-                    ':longitude' => $longitude
+                    ':longitude' => $longitude,
+                    ':created_at' => $dataHora,
+                    ':updated_at' => $dataHora
                 ]);
             }
 
