@@ -475,19 +475,37 @@ class JobsController
         $service = $aws['service'];
         $queueUrl = 'https://sqs.us-east-1.amazonaws.com/209479293352/nps-queue'; // Fila de NPS
 
+        global $pdo;
         $now = gmdate('Ymd\THis\Z');
         $date = gmdate('Ymd');
-
         $results = [];
 
         foreach ($data as $pedido) {
             try {
+                // Consulta o CNPJ da tabela orders_delivery
+                $stmt = $pdo->prepare("SELECT cnpj FROM orders_delivery WHERE chave_pedido = :chave LIMIT 1");
+                $stmt->execute([':chave' => $pedido['chave_pedido']]);
+                $cnpjResult = $stmt->fetch(PDO::FETCH_ASSOC);
+                $cnpj = $cnpjResult['cnpj'] ?? null;
+
+                // Consulta nome_fantasia usando o CNPJ
+                $nomeFantasia = null;
+                if ($cnpj) {
+                    $stmt2 = $pdo->prepare("SELECT nome_fantasia FROM estabelecimento WHERE cnpj = :cnpj LIMIT 1");
+                    $stmt2->execute([':cnpj' => $cnpj]);
+                    $nomeResult = $stmt2->fetch(PDO::FETCH_ASSOC);
+                    $nomeFantasia = $nomeResult['nome_fantasia'] ?? null;
+                }
+
+                // Monta a mensagem com os dados adicionais
                 $messageBody = json_encode([
                     'chave_pedido' => $pedido['chave_pedido'],
                     'telefone' => $pedido['telefone'],
                     'identificador_conta' => $pedido['identificador_conta'],
                     'cod' => $pedido['cod'],
-                    'link_nps' => $pedido['link_nps']
+                    'link_nps' => $pedido['link_nps'],
+                    'cnpj' => $cnpj,
+                    'nome_fantasia' => $nomeFantasia
                 ]);
 
                 $params = http_build_query([
@@ -554,7 +572,6 @@ class JobsController
                 if ($error) {
                     $results[] = ['success' => false, 'pedido' => $pedido['chave_pedido'], 'error' => $error];
                 } else {
-                    // Log opcional
                     self::logPayload(['nps_json' => $messageBody], $response);
                     $results[] = ['success' => true, 'pedido' => $pedido['chave_pedido'], 'response' => $response];
                 }
