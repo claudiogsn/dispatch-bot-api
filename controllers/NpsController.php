@@ -623,6 +623,7 @@ class NpsController
                 GROUP BY cnpj
             ) e ON e.cnpj = od.cnpj
             WHERE od.hora_abertura BETWEEN :inicio AND :fim
+            AND intg_tipo = 'DELIVERY-DIRETO'
             GROUP BY od.cnpj, e.nome_loja
             ORDER BY total_pedidos DESC;
                     ");
