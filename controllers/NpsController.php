@@ -614,14 +614,18 @@ class NpsController
         $stmtPedidos = $pdo->prepare("
             SELECT 
                 od.cnpj,
-                e.nome_fantasia AS nome_loja,
+                e.nome_loja,
                 COUNT(*) AS total_pedidos
             FROM orders_delivery od
-            LEFT JOIN estabelecimento e ON e.cnpj = od.cnpj
+            LEFT JOIN (
+                SELECT cnpj, MIN(nome_fantasia) AS nome_loja
+                FROM estabelecimento
+                GROUP BY cnpj
+            ) e ON e.cnpj = od.cnpj
             WHERE od.hora_abertura BETWEEN :inicio AND :fim
-            GROUP BY od.cnpj, e.nome_fantasia
+            GROUP BY od.cnpj, e.nome_loja
             ORDER BY total_pedidos DESC;
-        ");
+                    ");
         $stmtPedidos->execute([
             ':inicio' => $dt_inicio,
             ':fim' => $dt_fim
