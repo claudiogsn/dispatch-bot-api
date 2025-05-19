@@ -199,6 +199,20 @@ class NpsController
         try {
             $pdo->beginTransaction();
 
+            // Busca o CNPJ e o nome da loja com base na chave do pedido
+            $stmtPedido = $pdo->prepare("
+            SELECT od.cnpj, e.nome_fantasia as nome_loja
+            FROM orders_delivery od
+            LEFT JOIN estabelecimento e ON e.cnpj = od.cnpj
+            WHERE od.chave_pedido = :chave_pedido
+            LIMIT 1
+        ");
+            $stmtPedido->execute([':chave_pedido' => $chave_pedido]);
+            $dadosLoja = $stmtPedido->fetch(PDO::FETCH_ASSOC);
+
+            $cnpj = $dadosLoja['cnpj'] ?? null;
+            $nomeLoja = $dadosLoja['nome_loja'] ?? null;
+
             foreach ($respostas as $resposta) {
                 if (!isset($resposta['pergunta_id'])) {
                     throw new Exception("Cada resposta deve conter 'pergunta_id'.");
@@ -230,36 +244,39 @@ class NpsController
                     throw new Exception("A pergunta ID $pergunta_id é obrigatória e não foi respondida.");
                 }
 
-                // Insere a resposta
+                // Insere a resposta com CNPJ e nome da loja
                 $stmtInsert = $pdo->prepare("
-                      INSERT INTO formulario_respostas (
-                        pergunta_id, 
-                        chave_pedido, 
-                        resposta, 
-                        ip, 
-                        user_agent, 
-                        tipo_dispositivo, 
-                        plataforma,
-                        latitude,
-                        longitude,
-                        created_at,
-                        updated_at
-                      )
-                      VALUES (
-                        :pergunta_id, 
-                        :chave_pedido, 
-                        :resposta, 
-                        :ip, 
-                        :user_agent, 
-                        :tipo_dispositivo, 
-                        :plataforma,
-                        :latitude,
-                        :longitude,
-                        :created_at,
-                        :updated_at
-                      )
-                ");
-
+                INSERT INTO formulario_respostas (
+                    pergunta_id, 
+                    chave_pedido, 
+                    resposta, 
+                    ip, 
+                    user_agent, 
+                    tipo_dispositivo, 
+                    plataforma,
+                    latitude,
+                    longitude,
+                    created_at,
+                    updated_at,
+                    cnpj,
+                    nome_loja
+                )
+                VALUES (
+                    :pergunta_id, 
+                    :chave_pedido, 
+                    :resposta, 
+                    :ip, 
+                    :user_agent, 
+                    :tipo_dispositivo, 
+                    :plataforma,
+                    :latitude,
+                    :longitude,
+                    :created_at,
+                    :updated_at,
+                    :cnpj,
+                    :nome_loja
+                )
+            ");
 
                 $stmtInsert->execute([
                     ':pergunta_id' => $pergunta_id,
@@ -272,7 +289,9 @@ class NpsController
                     ':latitude' => $latitude,
                     ':longitude' => $longitude,
                     ':created_at' => $dataHora,
-                    ':updated_at' => $dataHora
+                    ':updated_at' => $dataHora,
+                    ':cnpj' => $cnpj,
+                    ':nome_loja' => $nomeLoja
                 ]);
             }
 
@@ -287,6 +306,7 @@ class NpsController
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
+
 
     public static function detectarDispositivo ($userAgent): array
     {
