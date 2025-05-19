@@ -250,7 +250,7 @@ if (isset($data['method']) && isset($data['data'])) {
 
             case 'ListQuestionsActive':
                 if(isset($requestData['formulario'])) {
-                    $response = NpsController::ListQuestionsActive($requestData['formulario']);
+                    $response = NpsController::ListQuestionsActive($requestData['formulario'], $requestData['tipo'] ?? null);
                 } else {
                     http_response_code(400);
                     throw new Exception("Missing required field: formulario.");
@@ -339,7 +339,20 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'ListarTodasAsRespostas':
-                $response = NpsController::ListarTodasAsRespostas();
+                if (isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $dt_inicio = $requestData['dt_inicio'];
+                    $dt_fim = $requestData['dt_fim'];
+
+                    if (strtotime($dt_inicio) > strtotime($dt_fim)) {
+                        http_response_code(400);
+                        $response = ['success' => false, 'error' => 'A data inicial não pode ser maior que a data final.'];
+                    } else {
+                        $response = NpsController::ListarTodasAsRespostas($dt_inicio, $dt_fim);
+                    }
+                } else {
+                    http_response_code(400);
+                    $response = ['success' => false, 'error' => 'Parâmetros obrigatórios: dt_inicio e dt_fim.'];
+                }
                 break;
             case 'ListarAgrupadoPorPedido':
                 $response = NpsController::ListarAgrupadoPorPedido();
@@ -360,11 +373,24 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['success' => false, 'error' => 'Telefone não fornecido'];
                 }
                 break;
-
-
-
-
-
+                case 'dashNps':
+                if (isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $dt_inicio = $requestData['dt_inicio'];
+                    $dt_fim = $requestData['dt_fim'];
+                    if (strtotime($dt_inicio) > strtotime($dt_fim)) {
+                        http_response_code(400);
+                        $response = ['success' => false, 'error' => 'A data inicial não pode ser maior que a data final.'];
+                    } else {
+                        $response = NpsController::dashNps($dt_inicio, $dt_fim);
+                    }
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required fields: dt_inicio and dt_fim.");
+                }
+                break;
+                case 'ListQuestions':
+                    $response = NpsController::ListQuestions();
+                    break;
 
             default:
                 http_response_code(405);

@@ -53,18 +53,29 @@ class NpsController
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public static function ListQuestionsActive($formulario)
+    public static function ListQuestionsActive($formulario,$tipo = null)
     {
         global $pdo;
 
-        $stmt = $pdo->prepare("
-        SELECT * FROM formulario_perguntas 
-        WHERE formulario = :formulario 
-          AND ativo = 1 
-        ORDER BY created_at DESC
-    ");
+        if ($tipo) {
+            $stmt = $pdo->prepare("
+            SELECT * FROM formulario_perguntas 
+            WHERE formulario = :formulario 
+              AND ativo = 1 
+              AND metodo_resposta = :tipo
+            ORDER BY created_at DESC
+        ");
+            $stmt->execute([':formulario' => $formulario, ':tipo' => $tipo]);
+        } else {
+            $stmt = $pdo->prepare("
+            SELECT * FROM formulario_perguntas 
+            WHERE formulario = :formulario 
+              AND ativo = 1 
+            ORDER BY created_at DESC
+        ");
+            $stmt->execute([':formulario' => $formulario]);
+        }
 
-        $stmt->execute([':formulario' => $formulario]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -469,7 +480,7 @@ class NpsController
         }
     }
 
-    public static function ListarTodasAsRespostas(): array
+    public static function ListarTodasAsRespostas($dt_inicio,$dt_fim): array
     {
         global $pdo;
 
@@ -481,18 +492,20 @@ class NpsController
                 r.pergunta_id,
                 p.titulo AS pergunta,
                 r.resposta,
+                p.metodo_resposta,
                 r.created_at,
                 r.ip,
-                r.user_agent,
                 r.tipo_dispositivo,
                 r.plataforma,
                 r.latitude,
-                r.longitude
-            FROM formulario_respostas r
+                r.longitude,
+                r.nome_loja            FROM formulario_respostas r
             LEFT JOIN formulario_perguntas p ON p.id = r.pergunta_id
+            WHERE r.resposta IS NOT NULL
+            AND r.created_at BETWEEN :dt_inicio AND :dt_fim
             ORDER BY r.created_at DESC
         ");
-            $stmt->execute();
+            $stmt->execute([':dt_inicio' => $dt_inicio, ':dt_fim' => $dt_fim]);
             $respostas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             return ['success' => true, 'respostas' => $respostas];
@@ -573,12 +586,63 @@ class NpsController
             return ['success' => false, 'error' => 'Erro ao buscar respostas agrupadas: ' . $e->getMessage()];
         }
     }
+    public static function dashNps($dt_inicio, $dt_fim)
+{
+    global $pdo;
 
+    if (!$dt_inicio || !$dt_fim) {
+        http_response_code(400);
+        return ['success' => false, 'error' => 'Parâmetros dt_inicio e dt_fim são obrigatórios.'];
+    }
 
+    try {
+        // Total de respostas distintas (por pedido)
+        $stmtRespostas = $pdo->prepare("
+            SELECT COUNT(DISTINCT chave_pedido) AS total, nome_loja
+            FROM formulario_respostas
+            WHERE resposta IS NOT NULL
+              AND created_at BETWEEN :inicio AND :fim
+            group by nome_loja
+        ");
+        $stmtRespostas->execute([
+            ':inicio' => $dt_inicio,
+            ':fim' => $dt_fim
+        ]);
+        $totalRespostas = $stmtRespostas->fetchAll(PDO::FETCH_ASSOC);
 
+        // Total de pedidos no período
+        $stmtPedidos = $pdo->prepare("
+            SELECT 
+                od.cnpj,
+                e.nome_fantasia AS nome_loja,
+                COUNT(*) AS total_pedidos
+            FROM orders_delivery od
+            LEFT JOIN estabelecimento e ON e.cnpj = od.cnpj
+            WHERE od.hora_abertura BETWEEN :inicio AND :fim
+            GROUP BY od.cnpj, e.nome_fantasia
+            ORDER BY total_pedidos DESC;
+        ");
+        $stmtPedidos->execute([
+            ':inicio' => $dt_inicio,
+            ':fim' => $dt_fim
+        ]);
+        $totalPedidos = $stmtPedidos->fetchAll(PDO::FETCH_ASSOC);
 
+        // 👉 Reutiliza o método existente
+        $respostasDetalhadas = self::ListarTodasAsRespostas($dt_inicio, $dt_fim);
 
-
-
+        return [
+            'success' => true,
+            'estatisticas' => [
+                'total_respostas' => $totalRespostas,
+                'total_pedidos' => $totalPedidos,
+            ],
+            'respostas' => $respostasDetalhadas['respostas'] ?? []
+        ];
+    } catch (Exception $e) {
+        http_response_code(500);
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+}
 
 }
