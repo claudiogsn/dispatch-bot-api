@@ -38,6 +38,9 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'getEstabelecimentos':
                 $response = EstabelecimentoController::getEstabelecimentos();
                 break;
+            case 'getNameEstabelecimentos':
+                $response = EstabelecimentoController::getNameEstabelecimentos();
+                break;
             case 'getEstabelecimentoByCnpj':
                 $response = EstabelecimentoController::getEstabelecimentoByCnpj($requestData['cnpj'], $requestData['token']);
                 break;

@@ -17,6 +17,17 @@ class EstabelecimentoController {
         return $estabelecimentos;
     }
 
+    public static function getNameEstabelecimentos() {
+        global $pdo;
+
+        $stmt = $pdo->prepare('SELECT nome_fantasia FROM estabelecimento');
+        $stmt->execute();
+
+        $estabelecimentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return $estabelecimentos;
+    }
+
     public static function getEstabelecimentoByCnpj($cnpj, $token) {
         global $pdo;
 
