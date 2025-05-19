@@ -343,10 +343,18 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'GetDetalhesDoPedido':
                 if (isset($requestData['chave_pedido'])) {
-                    $response = NpsController::GetDetalhesDoPedido($requestData['chave_pedido']);
+                    $response = OrdersDeliveryController::GetDetalhesDoPedido($requestData['chave_pedido']);
                 } else {
                     http_response_code(400);
                     throw new Exception("Missing field: chave_pedido.");
+                }
+                break;
+            case 'ListarPedidosPorTelefone':
+                if (isset($requestData['telefone'])) {
+                    $response = OrdersDeliveryController::ListarPedidosPorTelefone($requestData['telefone']);
+                } else {
+                    http_response_code(400);
+                    $response = ['success' => false, 'error' => 'Telefone não fornecido'];
                 }
                 break;
 

@@ -576,6 +576,160 @@ class OrdersDeliveryController {
         return ['updated' => $stmt->rowCount()];
     }
 
+    public static function ListarPedidosPorTelefone($telefone)
+    {
+        global $pdo;
+
+        if (!$telefone) {
+            http_response_code(400);
+            return ['success' => false, 'error' => 'Telefone é obrigatório.'];
+        }
+
+        try {
+            $stmt = $pdo->prepare("
+            SELECT 
+                od.chave_pedido,
+                od.identificador_conta,
+                od.hora_abertura,
+                od.cnpj,
+                od.telefone,
+                (SELECT e.nome_fantasia 
+                 FROM estabelecimento e 
+                 WHERE e.cnpj = od.cnpj 
+                 LIMIT 1) AS nome_loja,
+                EXISTS (
+                    SELECT 1 
+                    FROM formulario_respostas fr 
+                    WHERE fr.chave_pedido = od.chave_pedido
+                    LIMIT 1
+                ) AS respondeu
+            FROM orders_delivery od
+            WHERE od.telefone = :telefone
+            ORDER BY od.hora_abertura DESC
+        ");
+
+            $stmt->execute([':telefone' => $telefone]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Aplica a formatação no nome_cliente
+            $dados = array_map(function ($row) {
+                return [
+                    'chave_pedido' => $row['chave_pedido'],
+                    'nome_cliente'  => self::formatarNomeCliente($row['identificador_conta']),
+                    'hora_abertura' => self::formatarDataHora($row['hora_abertura']),
+                    'nome_loja'     => $row['nome_loja'],
+                    'respondeu'     => (bool)$row['respondeu']
+                ];
+            }, $rows);
+
+            return [
+                'success' => true,
+                'data' => $dados
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+
+    public static function formatarNomeCliente($nome)
+    {
+        return ucwords(trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-zA-ZÀ-ÿ\s]/u', '', $nome))));
+    }
+
+    public static function GetDetalhesDoPedido($chave_pedido): array
+    {
+        global $pdo;
+
+        if (!$chave_pedido) {
+            return ['success' => false, 'error' => 'Chave do pedido não fornecida.'];
+        }
+
+        try {
+            // 1. Busca os dados do pedido (matriz)
+            $stmtPedido = $pdo->prepare("
+                SELECT 
+                    od.*, 
+                    e.nome_fantasia AS nome_loja
+                FROM orders_delivery od
+                LEFT JOIN estabelecimento e ON e.cnpj = od.cnpj
+                WHERE od.chave_pedido = :chave
+                LIMIT 1;
+            ");
+            $stmtPedido->execute([':chave' => $chave_pedido]);
+            $pedido = $stmtPedido->fetch(PDO::FETCH_ASSOC);
+
+            if (!$pedido) {
+                return ['success' => false, 'error' => 'Pedido não encontrado.'];
+            }
+
+            // 2. Formulário de respostas
+            $stmtRespostas = $pdo->prepare("
+            SELECT 
+                r.pergunta_id,
+                p.titulo AS pergunta,
+                r.resposta,
+                r.created_at,
+                r.latitude,
+                r.longitude,
+                r.ip,
+                r.user_agent,
+                r.tipo_dispositivo,
+                r.plataforma
+            FROM formulario_respostas r
+            LEFT JOIN formulario_perguntas p ON p.id = r.pergunta_id
+            WHERE r.chave_pedido = :chave
+        ");
+            $stmtRespostas->execute([':chave' => $chave_pedido]);
+            $respostas = $stmtRespostas->fetchAll(PDO::FETCH_ASSOC);
+
+            // 3. WhatsApp (mensagem enviada)
+            $stmtWhatsApp = $pdo->prepare("
+            SELECT * FROM whatsapp_mensages WHERE chave_pedido = :chave ORDER BY created_at DESC LIMIT 1
+        ");
+            $stmtWhatsApp->execute([':chave' => $chave_pedido]);
+            $mensagemWhatsApp = $stmtWhatsApp->fetch(PDO::FETCH_ASSOC);
+
+            // 4. NPS (mensagem NPS enviada)
+            $stmtNps = $pdo->prepare("
+            SELECT * FROM mensagens_nps WHERE chave_pedido = :chave ORDER BY created_at DESC LIMIT 1
+        ");
+            $stmtNps->execute([':chave' => $chave_pedido]);
+            $mensagemNps = $stmtNps->fetch(PDO::FETCH_ASSOC);
+
+            // 5. Paradas (via cod_iapp ou cod_ifood)
+            $paradas = [];
+            if ($pedido['intg_tipo'] === 'DELIVERY-DIRETO' && $pedido['cod_iapp']) {
+                $stmtParadas = $pdo->prepare("SELECT * FROM orders_paradas WHERE numero_pedido = :cod");
+                $stmtParadas->execute([':cod' => $pedido['cod_iapp']]);
+                $paradas = $stmtParadas->fetchAll(PDO::FETCH_ASSOC);
+            } elseif ($pedido['intg_tipo'] === 'HUB-IFOOD' && $pedido['cod_ifood']) {
+                $stmtParadas = $pdo->prepare("SELECT * FROM orders_paradas WHERE numero_pedido = :cod");
+                $stmtParadas->execute([':cod' => $pedido['cod_ifood']]);
+                $paradas = $stmtParadas->fetchAll(PDO::FETCH_ASSOC);
+            }
+
+            return [
+                'success' => true,
+                'pedido' => $pedido,
+                'respostas' => $respostas,
+                'whatsapp_mensagem' => $mensagemWhatsApp,
+                'mensagem_nps' => $mensagemNps,
+                'paradas' => $paradas
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['success' => false, 'error' => 'Erro ao buscar detalhes: ' . $e->getMessage()];
+        }
+    }
+
+
+
+
 
 
 }
