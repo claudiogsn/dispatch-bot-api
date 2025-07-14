@@ -99,6 +99,8 @@ class NpsController
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+public static function ListQuestionsActiveDash($formulario,$tipo)
+    {
         global $pdo;
 
         $query = "
@@ -106,12 +108,16 @@ class NpsController
                *
             FROM formulario_perguntas
             WHERE formulario = :formulario
+              AND metodo_resposta = :metodo_resposta
               AND ativo = 1
         ";
 
         $params = [':formulario' => $formulario,':metodo_resposta'=> $tipo];
 
         $query .= " ORDER BY created_at DESC";
+
+        $stmt = $pdo->prepare($query);
+        $stmt->execute($params);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -361,7 +367,26 @@ class NpsController
         $dataHora = date('Y-m-d H:i:s');
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
         $infoDispositivo = self::detectarDispositivo($userAgent);
+        $tipoDispositivo = $infoDispositivo['tipo'];
+        $plataforma = $infoDispositivo['plataforma'];
+
+        if (
+            stripos($userAgent, 'postman') !== false ||
+            stripos($userAgent, 'insomnia') !== false ||
+            stripos($userAgent, 'thunder-client') !== false
+        ) {
+            http_response_code(403);
+            return ['success' => false, 'error' => 'Acesso negado via ferramenta de teste'];
+        }
+
+        global $pdo;
+
         $chave_mesa = $data['chave_mesa'] ?? null;
+        $nomeLoja = $data['nome_loja'] ?? null;
+        $respostas = $data['respostas'] ?? [];
+        $ip = $_SERVER['REMOTE_ADDR'];
+        $latitude = $data['latitude'] ?? null;
+        $longitude = $data['longitude'] ?? null;
 
         if (!$chave_mesa || !$nomeLoja || !is_array($respostas) || count($respostas) === 0) {
             http_response_code(400);
@@ -369,6 +394,7 @@ class NpsController
         }
 
         try {
+            $pdo->beginTransaction();
 
             // Buscar o CNPJ com base no nome da loja
             $stmtCnpj = $pdo->prepare("SELECT cnpj FROM estabelecimento WHERE nome_loja = :nome_loja LIMIT 1");
@@ -376,6 +402,7 @@ class NpsController
             $cnpj = $stmtCnpj->fetchColumn();
 
             if (!$cnpj) {
+                throw new Exception("CNPJ não encontrado para a loja '$nomeLoja'.");
             }
 
             foreach ($respostas as $resposta) {
@@ -383,15 +410,82 @@ class NpsController
                     throw new Exception("Cada resposta deve conter 'pergunta_id'.");
                 }
 
+                $pergunta_id = $resposta['pergunta_id'];
                 $resposta_valor = $resposta['resposta'] ?? null;
 
                 if (is_array($resposta_valor) && count($resposta_valor) === 0) {
                     $resposta_valor = null;
                 }
+                if (is_string($resposta_valor) && trim($resposta_valor) === '') {
                     $resposta_valor = null;
+                }
+
+                $stmtObrigatoria = $pdo->prepare("SELECT obrigatoria FROM formulario_perguntas WHERE id = :id LIMIT 1");
+                $stmtObrigatoria->execute([':id' => $pergunta_id]);
+                $obrigatoria = $stmtObrigatoria->fetchColumn();
+
+                if ($obrigatoria === false) {
+                    throw new Exception("Pergunta ID $pergunta_id não encontrada.");
+                }
+
+                if ((int)$obrigatoria === 1 && $resposta_valor === null) {
+                    http_response_code(400);
+                    throw new Exception("A pergunta ID $pergunta_id é obrigatória e não foi respondida.");
+                }
+
+                $stmtInsert = $pdo->prepare("
+                    INSERT INTO formulario_respostas (
+                        pergunta_id,
+                        chave_pedido,
+                        resposta,
+                        ip,
+                        user_agent,
+                        tipo_dispositivo,
+                        plataforma,
+                        latitude,
+                        longitude,
+                        created_at,
+                        updated_at,
+                        nome_loja,
+                        cnpj,
+                        modo_venda
+                    ) VALUES (
+                        :pergunta_id,
+                        :chave_pedido,
+                        :resposta,
+                        :ip,
+                        :user_agent,
+                        :tipo_dispositivo,
+                        :plataforma,
+                        :latitude,
+                        :longitude,
+                        :created_at,
+                        :updated_at,
+                        :nome_loja,
+                        :cnpj,
+                        'MESA'
+                    )
+                ");
+
+                $stmtInsert->execute([
+                    ':pergunta_id' => $pergunta_id,
+                    ':chave_pedido' => $chave_mesa,
+                    ':resposta' => $resposta_valor,
+                    ':ip' => $ip,
+                    ':user_agent' => $userAgent,
+                    ':tipo_dispositivo' => $tipoDispositivo,
+                    ':plataforma' => $plataforma,
+                    ':latitude' => $latitude,
+                    ':longitude' => $longitude,
+                    ':created_at' => $dataHora,
+                    ':updated_at' => $dataHora,
+                    ':nome_loja' => $nomeLoja,
+                    ':cnpj' => $cnpj
                 ]);
             }
 
+            $pdo->commit();
+            return ['success' => true];
         } catch (Exception $e) {
             $pdo->rollBack();
             http_response_code(400);
@@ -570,6 +664,7 @@ class NpsController
             SELECT 
                 r.id,
                 r.chave_pedido,
+                r.modo_venda,
                 r.pergunta_id,
                 p.titulo AS pergunta,
                 r.resposta,
@@ -604,6 +699,7 @@ class NpsController
             SELECT 
                 r.chave_pedido,
                 r.nome_loja,
+                r.modo_venda,
                 r.cnpj,
                 r.created_at,
                 r.ip,
