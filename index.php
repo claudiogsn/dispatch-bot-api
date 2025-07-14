@@ -258,6 +258,15 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+                case 'ListQuestionsActiveDash':
+                    if(isset($requestData['formulario'])) {
+                        $response = NpsController::ListQuestionsActiveDash($requestData['formulario'], $requestData['tipo']);
+                    } else {
+                        http_response_code(400);
+                        throw new Exception("Missing required field: formulario.");
+                    }
+                    break;
+
             case 'ShowQuestion':
                 if (isset($requestData['id'])) {
                     $response = NpsController::ShowQuestion($requestData['id']);
@@ -293,6 +302,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     throw new Exception("Missing or invalid fields for CreateRespostas.");
                 }
                 break;
+                case 'CreateRespostasMesa':
+                    if (isset($requestData['chave_mesa'], $requestData['respostas']) && is_array($requestData['respostas'])) {
+                        $response = NpsController::CreateRespostasMesa($requestData);
+                    } else {
+                        http_response_code(400);
+                        throw new Exception("Missing or invalid fields for CreateRespostasMesa.");
+                    }
+                    break;
 
             case 'ListarRespostasPorChavePedido':
                 if (isset($requestData['chave_pedido'])) {
@@ -366,6 +383,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     throw new Exception("Missing field: chave_pedido.");
                 }
                 break;
+                case 'GetDetalhesMesa':
+                    if (isset($requestData['chave_pedido'])) {
+                        $response = OrdersDeliveryController::GetDetalhesMesa($requestData['chave_pedido']);
+                    } else {
+                        http_response_code(400);
+                        throw new Exception("Missing field: chave_pedido.");
+                    }
+                    break;
             case 'ListarPedidosPorTelefone':
                 if (isset($requestData['telefone'])) {
                     $response = OrdersDeliveryController::ListarPedidosPorTelefone($requestData['telefone']);

@@ -99,6 +99,23 @@ class NpsController
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+        global $pdo;
+
+        $query = "
+            SELECT
+               *
+            FROM formulario_perguntas
+            WHERE formulario = :formulario
+              AND ativo = 1
+        ";
+
+        $params = [':formulario' => $formulario,':metodo_resposta'=> $tipo];
+
+        $query .= " ORDER BY created_at DESC";
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
 
     public static function ShowQuestion($id)
     {
@@ -332,6 +349,49 @@ class NpsController
 
             $pdo->commit();
             return ['success' => true];
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            http_response_code(400);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    public static function CreateRespostasMesa($data)
+    {
+        $dataHora = date('Y-m-d H:i:s');
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+        $infoDispositivo = self::detectarDispositivo($userAgent);
+        $chave_mesa = $data['chave_mesa'] ?? null;
+
+        if (!$chave_mesa || !$nomeLoja || !is_array($respostas) || count($respostas) === 0) {
+            http_response_code(400);
+            return ['success' => false, 'error' => 'Dados obrigatórios ausentes (chave_mesa, nome_loja ou respostas).'];
+        }
+
+        try {
+
+            // Buscar o CNPJ com base no nome da loja
+            $stmtCnpj = $pdo->prepare("SELECT cnpj FROM estabelecimento WHERE nome_loja = :nome_loja LIMIT 1");
+            $stmtCnpj->execute([':nome_loja' => $nomeLoja]);
+            $cnpj = $stmtCnpj->fetchColumn();
+
+            if (!$cnpj) {
+            }
+
+            foreach ($respostas as $resposta) {
+                if (!isset($resposta['pergunta_id'])) {
+                    throw new Exception("Cada resposta deve conter 'pergunta_id'.");
+                }
+
+                $resposta_valor = $resposta['resposta'] ?? null;
+
+                if (is_array($resposta_valor) && count($resposta_valor) === 0) {
+                    $resposta_valor = null;
+                }
+                    $resposta_valor = null;
+                ]);
+            }
+
         } catch (Exception $e) {
             $pdo->rollBack();
             http_response_code(400);
@@ -578,6 +638,7 @@ class NpsController
                         'chave_pedido' => $row['chave_pedido'],
                         'cod_iapp' => $row['cod_iapp'],
                         'cnpj' => $row['cnpj'],
+                        'modo_venda' => $row['modo_venda'],
                         'nome_loja' => $row['nome_loja'],
                         'nome_cliente' => ucwords(trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-zA-ZÀ-ÿ\s]/u', '', $row['identificador_conta'])))),
                         'telefone' => OrdersDeliveryController::formatarTelefone($row['telefone']),

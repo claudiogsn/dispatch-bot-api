@@ -727,6 +727,46 @@ class OrdersDeliveryController {
         }
     }
 
+    public static function GetDetalhesMesa($chave_pedido): array
+    {
+        global $pdo;
+
+        if (!$chave_pedido) {
+            return ['success' => false, 'error' => 'Chave da mesa não fornecida.'];
+        }
+
+        try {
+            $stmtRespostas = $pdo->prepare("
+                SELECT
+                    r.pergunta_id,
+                    p.titulo AS pergunta,
+                    r.resposta,
+                    r.created_at,
+                    r.latitude,
+                    r.longitude,
+                    r.ip,
+                    r.user_agent,
+                    r.tipo_dispositivo,
+                    r.plataforma
+                FROM formulario_respostas r
+                LEFT JOIN formulario_perguntas p ON p.id = r.pergunta_id
+                WHERE r.chave_pedido = :chave
+                  AND r.modo_venda = 'MESA'
+            ");
+            $stmtRespostas->execute([':chave' => $chave_pedido]);
+            $respostas = $stmtRespostas->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                'success' => true,
+                'respostas' => $respostas
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['success' => false, 'error' => 'Erro ao buscar respostas: ' . $e->getMessage()];
+        }
+    }
+
+
 
 
 
