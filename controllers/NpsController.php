@@ -53,31 +53,52 @@ class NpsController
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public static function ListQuestionsActive($formulario,$tipo = null)
+   public static function ListQuestionsActive($formulario, $tipo = null, $modo_venda = null)
     {
         global $pdo;
 
+        $query = "
+            SELECT
+                id,
+                formulario,
+                titulo,
+                metodo_resposta,
+                obrigatoria,
+                ativo,
+                delivery,
+                mesa,
+                created_at,
+                updated_at,
+                CASE
+                    WHEN :modo_venda = 'mesa' THEN subtitulo_mesa
+                    ELSE subtitulo_delivery
+                END AS subtitulo
+            FROM formulario_perguntas
+            WHERE formulario = :formulario
+              AND ativo = 1
+        ";
+
+        $params = [':formulario' => $formulario, ':modo_venda' => $modo_venda ?? 'delivery'];
+
         if ($tipo) {
-            $stmt = $pdo->prepare("
-            SELECT * FROM formulario_perguntas 
-            WHERE formulario = :formulario 
-              AND ativo = 1 
-              AND metodo_resposta = :tipo
-            ORDER BY created_at DESC
-        ");
-            $stmt->execute([':formulario' => $formulario, ':tipo' => $tipo]);
-        } else {
-            $stmt = $pdo->prepare("
-            SELECT * FROM formulario_perguntas 
-            WHERE formulario = :formulario 
-              AND ativo = 1 
-            ORDER BY created_at DESC
-        ");
-            $stmt->execute([':formulario' => $formulario]);
+            $query .= " AND metodo_resposta = :tipo";
+            $params[':tipo'] = $tipo;
         }
+
+        if ($modo_venda === 'mesa') {
+            $query .= " AND mesa = 1";
+        } else {
+            $query .= " AND delivery = 1";
+        }
+
+        $query .= " ORDER BY created_at DESC";
+
+        $stmt = $pdo->prepare($query);
+        $stmt->execute($params);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
 
     public static function ShowQuestion($id)
     {

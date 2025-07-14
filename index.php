@@ -24,6 +24,7 @@ require_once 'controllers/OrdersDeliveryController.php';
 require_once 'controllers/ClientOrders.php';
 require_once 'controllers/JobsController.php';
 require_once 'controllers/NpsController.php';
+require_once 'controllers/MesaController.php';
 
 $json = file_get_contents('php://input');
 $data = json_decode($json, true);
@@ -250,7 +251,7 @@ if (isset($data['method']) && isset($data['data'])) {
 
             case 'ListQuestionsActive':
                 if(isset($requestData['formulario'])) {
-                    $response = NpsController::ListQuestionsActive($requestData['formulario'], $requestData['tipo'] ?? null);
+                    $response = NpsController::ListQuestionsActive($requestData['formulario'], $requestData['tipo'] ?? null, $requestData['modo_venda'] ?? null);
                 } else {
                     http_response_code(400);
                     throw new Exception("Missing required field: formulario.");
@@ -391,6 +392,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 case 'ListQuestions':
                     $response = NpsController::ListQuestions();
                     break;
+
 
             default:
                 http_response_code(405);
