@@ -276,6 +276,15 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+                case 'UpdateOrdemPerguntas':
+                if (isset($requestData)) {
+                    $response = NpsController::UpdateOrdemPerguntas($requestData);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required field: id.");
+                }
+                break;
+
             case 'UpdateQuestion':
                 if (isset($requestData['perguntas']) && is_array($requestData['perguntas'])) {
                     $response = NpsController::UpdateQuestion($requestData['perguntas'][0]);

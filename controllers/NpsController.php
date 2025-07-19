@@ -6,7 +6,7 @@ require_once __DIR__ . '/../database/db.php';
 
 class NpsController
 {
-    public static function CreateQuestion($data): array
+   public static function CreateQuestion($data): array
 {
     global $pdo;
 
@@ -24,10 +24,10 @@ class NpsController
         }
 
         $sql = "INSERT INTO formulario_perguntas (
-                    formulario, titulo, subtitulo_delivery, subtitulo_mesa, metodo_resposta,
+                    formulario, titulo, ordem, subtitulo_delivery, subtitulo_mesa, metodo_resposta,
                     ativo, obrigatoria, delivery, mesa, created_at, updated_at
                 ) VALUES (
-                    :formulario, :titulo, :subtitulo_delivery, :subtitulo_mesa, :metodo_resposta,
+                    :formulario, :titulo, :ordem, :subtitulo_delivery, :subtitulo_mesa, :metodo_resposta,
                     :ativo, :obrigatoria, :delivery, :mesa, :created_at, :updated_at
                 )";
 
@@ -35,6 +35,7 @@ class NpsController
         $stmt->execute([
             ':formulario'          => $pergunta['formulario'],
             ':titulo'              => $pergunta['titulo'],
+            ':ordem'               => $pergunta['ordem'] ?? null,
             ':subtitulo_delivery'  => $pergunta['subtitulo_delivery'] ?? null,
             ':subtitulo_mesa'      => $pergunta['subtitulo_mesa'] ?? null,
             ':metodo_resposta'     => $pergunta['metodo_resposta'],
@@ -58,9 +59,35 @@ class NpsController
     {
         global $pdo;
 
-        $stmt = $pdo->query("SELECT * FROM formulario_perguntas ORDER BY created_at DESC");
+        $stmt = $pdo->query("SELECT * FROM formulario_perguntas ORDER BY ordem ASC");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    public static function UpdateOrdemPerguntas($data): array
+    {
+        global $pdo;
+
+        if (!isset($data['perguntas']) || !is_array($data['perguntas'])) {
+            throw new Exception("Campo 'perguntas' ausente ou inválido.");
+        }
+
+        $updated = 0;
+
+        foreach ($data['perguntas'] as $p) {
+            if (!isset($p['id'], $p['ordem'])) continue;
+
+            $stmt = $pdo->prepare("UPDATE formulario_perguntas SET ordem = :ordem, updated_at = CURRENT_TIMESTAMP WHERE id = :id");
+            $stmt->execute([
+                ':ordem' => $p['ordem'],
+                ':id' => $p['id']
+            ]);
+
+            $updated += $stmt->rowCount();
+        }
+
+        return ['updated' => $updated];
+    }
+
 
    public static function ListQuestionsActive($formulario, $tipo = null, $modo_venda = null)
     {
@@ -69,6 +96,7 @@ class NpsController
         $query = "
             SELECT
                 id,
+                ordem,
                 formulario,
                 titulo,
                 metodo_resposta,
@@ -100,7 +128,7 @@ class NpsController
             $query .= " AND delivery = 1";
         }
 
-        $query .= " ORDER BY created_at DESC";
+        $query .= " ORDER BY ordem ASC";
 
         $stmt = $pdo->prepare($query);
         $stmt->execute($params);
@@ -123,7 +151,7 @@ public static function ListQuestionsActiveDash($formulario,$tipo)
 
         $params = [':formulario' => $formulario,':metodo_resposta'=> $tipo];
 
-        $query .= " ORDER BY created_at DESC";
+        $query .= " ORDER BY ordem ASC";
 
         $stmt = $pdo->prepare($query);
         $stmt->execute($params);
@@ -158,20 +186,24 @@ public static function ListQuestionsActiveDash($formulario,$tipo)
                 continue;
             }
 
-            $sql = "UPDATE formulario_perguntas SET 
-                        formulario = :formulario,
-                        titulo = :titulo,
-                        subtitulo = :subtitulo,
-                        metodo_resposta = :metodo_resposta,
-                        ativo = :ativo,
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE id = :id";
+           $sql = "UPDATE formulario_perguntas SET 
+                formulario = :formulario,
+                titulo = :titulo,
+                ordem = :ordem,
+                subtitulo_delivery = :subtitulo_delivery,
+                subtitulo_mesa = :subtitulo_mesa,
+                metodo_resposta = :metodo_resposta,
+                ativo = :ativo,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :id";
 
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
                 ':formulario' => $pergunta['formulario'],
                 ':titulo' => $pergunta['titulo'],
-                ':subtitulo' => $pergunta['subtitulo'] ?? null,
+                ':ordem' => $pergunta['ordem'] ?? null,
+                ':subtitulo_delivery' => $pergunta['subtitulo_delivery'] ?? null,
+                ':subtitulo_mesa' => $pergunta['subtitulo_mesa'] ?? null,
                 ':metodo_resposta' => $pergunta['metodo_resposta'],
                 ':ativo' => $pergunta['ativo'] ?? 1,
                 ':id' => $pergunta['id']
@@ -194,6 +226,7 @@ public static function UpdateQuestion(array $pergunta): array
     $camposPermitidos = [
         'formulario',
         'titulo',
+        'ordem',
         'subtitulo_delivery',
         'subtitulo_mesa',
         'metodo_resposta',
@@ -239,6 +272,7 @@ public static function UpdateQuestion(array $pergunta): array
 
         return ['deleted' => $stmt->rowCount()];
     }
+
 
     public static function CreateRespostas($data)
     {
@@ -568,6 +602,7 @@ public static function UpdateQuestion(array $pergunta): array
         $stmt->execute([':chave_pedido' => $chave_pedido]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
     public static function FormularioJaRespondido($chave_pedido, $formulario): array
     {
         global $pdo;
@@ -583,7 +618,7 @@ public static function UpdateQuestion(array $pergunta): array
         WHERE r.chave_pedido = :chave_pedido
           AND p.formulario = :formulario
         LIMIT 1
-    ");
+        ");
 
         $stmt->execute([
             ':chave_pedido' => $chave_pedido,
