@@ -6,7 +6,7 @@ require_once __DIR__ . '/../database/db.php';
 
 class NpsController
 {
-   public static function CreateQuestion($data): array
+  public static function CreateQuestion($data): array
 {
     global $pdo;
 
@@ -23,6 +23,12 @@ class NpsController
             continue;
         }
 
+        // Buscar a maior ordem atual do formulário
+        $stmtMax = $pdo->prepare("SELECT MAX(ordem) FROM formulario_perguntas WHERE formulario = :formulario");
+        $stmtMax->execute([':formulario' => $pergunta['formulario']]);
+        $maiorOrdem = (int)$stmtMax->fetchColumn();
+        $novaOrdem = $maiorOrdem + 1;
+
         $sql = "INSERT INTO formulario_perguntas (
                     formulario, titulo, ordem, subtitulo_delivery, subtitulo_mesa, metodo_resposta,
                     ativo, obrigatoria, delivery, mesa, created_at, updated_at
@@ -35,7 +41,7 @@ class NpsController
         $stmt->execute([
             ':formulario'          => $pergunta['formulario'],
             ':titulo'              => $pergunta['titulo'],
-            ':ordem'               => $pergunta['ordem'] ?? null,
+            ':ordem'               => $novaOrdem,
             ':subtitulo_delivery'  => $pergunta['subtitulo_delivery'] ?? null,
             ':subtitulo_mesa'      => $pergunta['subtitulo_mesa'] ?? null,
             ':metodo_resposta'     => $pergunta['metodo_resposta'],
@@ -52,6 +58,7 @@ class NpsController
 
     return ['created_ids' => $ids];
 }
+
 
 
 
@@ -226,7 +233,6 @@ public static function UpdateQuestion(array $pergunta): array
     $camposPermitidos = [
         'formulario',
         'titulo',
-        'ordem',
         'subtitulo_delivery',
         'subtitulo_mesa',
         'metodo_resposta',
