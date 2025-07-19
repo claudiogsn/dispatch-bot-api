@@ -174,40 +174,51 @@ public static function ListQuestionsActiveDash($formulario,$tipo)
         return ['updated_count' => $updated];
     }
 
-    public static function UpdateQuestion(array $pergunta ): array
-    {
+public static function UpdateQuestion(array $pergunta): array
+{
+    global $pdo;
 
-        global $pdo;
-
-        if (!isset($pergunta['id'])) {
-            throw new Exception("Campo 'id' é obrigatório.");
-        }
-
-        $camposPermitidos = ['formulario', 'titulo', 'subtitulo', 'metodo_resposta', 'ativo'];
-        $setClauses = [];
-        $params = [':id' => $pergunta['id']];
-
-        foreach ($camposPermitidos as $campo) {
-            if (isset($pergunta[$campo])) {
-                $setClauses[] = "$campo = :$campo";
-                $params[":$campo"] = $pergunta[$campo];
-            }
-        }
-
-        if (empty($setClauses)) {
-            throw new Exception("Nenhum campo para atualizar foi fornecido.");
-        }
-
-        // Sempre atualiza o campo updated_at
-        $setClauses[] = "updated_at = CURRENT_TIMESTAMP";
-
-        $sql = "UPDATE formulario_perguntas SET " . implode(', ', $setClauses) . " WHERE id = :id";
-
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-
-        return ['updated_count' => $stmt->rowCount()];
+    if (!isset($pergunta['id'])) {
+        throw new Exception("Campo 'id' é obrigatório.");
     }
+
+    $camposPermitidos = [
+        'formulario',
+        'titulo',
+        'subtitulo_delivery',
+        'subtitulo_mesa',
+        'metodo_resposta',
+        'ativo',
+        'obrigatoria',
+        'delivery',
+        'mesa'
+    ];
+
+    $setClauses = [];
+    $params = [':id' => $pergunta['id']];
+
+    foreach ($camposPermitidos as $campo) {
+        if (isset($pergunta[$campo])) {
+            $setClauses[] = "$campo = :$campo";
+            $params[":$campo"] = $pergunta[$campo];
+        }
+    }
+
+    if (empty($setClauses)) {
+        throw new Exception("Nenhum campo para atualizar foi fornecido.");
+    }
+
+    // Sempre atualiza o campo updated_at
+    $setClauses[] = "updated_at = CURRENT_TIMESTAMP";
+
+    $sql = "UPDATE formulario_perguntas SET " . implode(', ', $setClauses) . " WHERE id = :id";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    return ['updated_count' => $stmt->rowCount()];
+}
+
 
 
     public static function DeleteQuestion($id): array
