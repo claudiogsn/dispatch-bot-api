@@ -7,42 +7,51 @@ require_once __DIR__ . '/../database/db.php';
 class NpsController
 {
     public static function CreateQuestion($data): array
-    {
-        global $pdo;
+{
+    global $pdo;
 
-        $created_at = date('Y-m-d H:i:s');
+    $created_at = date('Y-m-d H:i:s');
 
-        if (!isset($data['perguntas']) || !is_array($data['perguntas'])) {
-            throw new Exception("Campo 'perguntas' ausente ou inválido.");
-        }
-
-        $ids = [];
-
-        foreach ($data['perguntas'] as $pergunta) {
-            if (
-                !isset($pergunta['formulario'], $pergunta['titulo'], $pergunta['metodo_resposta'])
-            ) {
-                continue;
-            }
-
-            $sql = "INSERT INTO formulario_perguntas (formulario, titulo, subtitulo, metodo_resposta, ativo, created_at, updated_at)
-                VALUES (:formulario, :titulo, :subtitulo, :metodo_resposta, :ativo, :created_at, :updated_at)";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([
-                ':formulario' => $pergunta['formulario'],
-                ':titulo' => $pergunta['titulo'],
-                ':subtitulo' => $pergunta['subtitulo'] ?? null,
-                ':metodo_resposta' => $pergunta['metodo_resposta'],
-                ':ativo' => $pergunta['ativo'] ?? 1,
-                ':created_at' => $created_at,
-                ':updated_at' => $created_at
-            ]);
-
-            $ids[] = $pdo->lastInsertId();
-        }
-
-        return ['created_ids' => $ids];
+    if (!isset($data['perguntas']) || !is_array($data['perguntas'])) {
+        throw new Exception("Campo 'perguntas' ausente ou inválido.");
     }
+
+    $ids = [];
+
+    foreach ($data['perguntas'] as $pergunta) {
+        if (!isset($pergunta['formulario'], $pergunta['titulo'], $pergunta['metodo_resposta'])) {
+            continue;
+        }
+
+        $sql = "INSERT INTO formulario_perguntas (
+                    formulario, titulo, subtitulo_delivery, subtitulo_mesa, metodo_resposta,
+                    ativo, obrigatoria, delivery, mesa, created_at, updated_at
+                ) VALUES (
+                    :formulario, :titulo, :subtitulo_delivery, :subtitulo_mesa, :metodo_resposta,
+                    :ativo, :obrigatoria, :delivery, :mesa, :created_at, :updated_at
+                )";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            ':formulario'          => $pergunta['formulario'],
+            ':titulo'              => $pergunta['titulo'],
+            ':subtitulo_delivery'  => $pergunta['subtitulo_delivery'] ?? null,
+            ':subtitulo_mesa'      => $pergunta['subtitulo_mesa'] ?? null,
+            ':metodo_resposta'     => $pergunta['metodo_resposta'],
+            ':ativo'               => $pergunta['ativo'] ?? 1,
+            ':obrigatoria'         => $pergunta['obrigatoria'] ?? 0,
+            ':delivery'            => $pergunta['delivery'] ?? 0,
+            ':mesa'                => $pergunta['mesa'] ?? 0,
+            ':created_at'          => $created_at,
+            ':updated_at'          => $created_at
+        ]);
+
+        $ids[] = $pdo->lastInsertId();
+    }
+
+    return ['created_ids' => $ids];
+}
+
 
 
     public static function ListQuestions()
