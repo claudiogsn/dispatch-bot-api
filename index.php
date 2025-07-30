@@ -22,6 +22,7 @@ require_once 'controllers/JobsController.php';
 require_once 'controllers/NpsController.php';
 require_once 'controllers/MesaController.php';
 require_once 'controllers/BiController.php';
+require_once 'controllers/ConsultasController.php';
 
 $method = $_REQUEST['method'] ?? null;
 
@@ -463,6 +464,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 case 'ListQuestions':
                     $response = NpsController::ListQuestions();
                     break;
+
+            case 'createConsulta':
+                if (
+                    isset($requestData['nome']) &&
+                    isset($requestData['sql_template'])
+                ) {
+                    $descricao = $requestData['descricao'] ?? null;
+                    $response = ConsultaController::CreateConsulta(
+                        $requestData['nome'],
+                        $requestData['sql_template'],
+                        $descricao
+                    );
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required fields: nome and sql_template.");
+                }
+                break;
+
+            case 'getConsultas':
+                $response = ConsultaController::GetConsultas();
+                break;
+
+            case 'executarConsulta':
+                if (isset($requestData['nome'])) {
+                    $response = ConsultaController::executarConsultaPorNome(
+                        $requestData['nome'],
+                        $requestData['data_inicial'] ?? null,
+                        $requestData['data_final'] ?? null
+                    );
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required field: nome.");
+                }
+                break;
+
+
+
 
 
             default:
