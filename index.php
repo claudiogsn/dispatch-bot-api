@@ -1,19 +1,15 @@
 <?php
 // Permitir acesso de qualquer origem
 header("Access-Control-Allow-Origin: *");
-
-// Permitir métodos específicos
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-
-// Permitir cabeçalhos específicos
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-// Responder às solicitações de preflight
+// Preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    // Responder à solicitação de preflight com os cabeçalhos adequados
-    header("HTTP/1.1 200 OK");
+    http_response_code(200);
     exit();
 }
+
 date_default_timezone_set('America/Rio_Branco');
 header('Content-Type: application/json; charset=utf-8');
 
@@ -25,16 +21,63 @@ require_once 'controllers/ClientOrders.php';
 require_once 'controllers/JobsController.php';
 require_once 'controllers/NpsController.php';
 require_once 'controllers/MesaController.php';
+require_once 'controllers/BiController.php';
 
-$json = file_get_contents('php://input');
-$data = json_decode($json, true);
+// Capturar metodo e dados, seja via POST ou GET
+$method = $_REQUEST['method'] ?? null;
 
-if (isset($data['method']) && isset($data['data'])) {
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $json = file_get_contents('php://input');
+    $data = json_decode($json, true);
     $method = $data['method'];
     $requestData = $data['data'];
+} else {
+    $requestData = $_GET;
+}
+print_r($requestData);
+print_r($method);
+
 
     try {
+        if (!$method) {
+            http_response_code(400);
+            throw new Exception("Missing 'method' parameter.");
+        }
         switch ($method) {
+            // Métodos para BiController
+            case 'createOrUpdateContas':
+                if (isset($requestData['contas']) && is_array($requestData['contas'])) {
+                    $response = BiController::createOrUpdateContas($requestData['contas']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing or invalid field: dados.");
+                }
+                break;
+            case 'createOrUpdateItens':
+                if (isset($requestData['itens']) && is_array($requestData['itens'])) {
+                    $response = BiController::createOrUpdateItens($requestData['itens']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing or invalid field: dados.");
+                }
+                break;
+            case 'getContasBi':
+                if (isset($requestData['data_inicial']) && isset($requestData['data_final'])) {
+                    $response = BiController::getContasBi($requestData['data_inicial'], $requestData['data_final']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required fields: data_inicial and data_final.");
+                }
+                break;
+            case 'getItensBi':
+                if (isset($requestData['data_inicial']) && isset($requestData['data_final'])) {
+                    $response = BiController::getItensBi($requestData['data_inicial'], $requestData['data_final']);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Missing required fields: data_inicial and data_final.");
+                }
+                break;
             // Métodos para EstabelecimentoController
             case 'getEstabelecimentos':
                 $response = EstabelecimentoController::getEstabelecimentos();
@@ -441,9 +484,4 @@ if (isset($data['method']) && isset($data['data'])) {
         $response = array('error' => 'Erro interno do servidor: ' . $e->getMessage());
         echo json_encode($response);
     }
-} else {
-    header('Content-Type: application/json');
-    http_response_code(400);
-    echo json_encode(array('error' => 'Parâmetros inválidos'));
-}
 ?>
