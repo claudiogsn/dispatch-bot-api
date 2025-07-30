@@ -23,9 +23,7 @@ require_once 'controllers/NpsController.php';
 require_once 'controllers/MesaController.php';
 require_once 'controllers/BiController.php';
 
-// Capturar metodo e dados, seja via POST ou GET
 $method = $_REQUEST['method'] ?? null;
-
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $json = file_get_contents('php://input');
@@ -35,10 +33,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 } else {
     $requestData = $_GET;
 }
-print_r($requestData);
-print_r($method);
-
-
     try {
         if (!$method) {
             http_response_code(400);
