@@ -97,28 +97,22 @@ class BIController {
             return ['success' => false, 'message' => 'Nenhum dado fornecido.'];
         }
 
-        $columns = [
-            "nome_estabelecimento", "cnpj_estabelecimento", "num_controle", "codigo", "operacao",
-            "nquant", "npreco", "caixinha", "garcon", "hora", "hora_at", "dt_mov", "mesa", "fone", "nome",
-            "fantasia", "intg_tipo", "npessoas", "origem_conta", "delivered_by", "hr_fechamento_conta",
-            "hora_lancamento", "hora_at_despachado", "valor_total_prod", "valor_total_prodserv",
-            "nome_produto", "impressora_produto", "nome_categoria", "nome_tipo", "nome_garcom",
-            "parte1_descricao", "parte2_descricao", "parte3_descricao", "parte4_descricao", "parte5_descricao",
-            "parte6_descricao", "parte7_descricao", "parte8_descricao", "parte9_descricao", "parte10_descricao",
-            "parte11_descricao", "parte12_descricao"
-        ];
+        // Força todas as chaves dos registros para minúsculas
+        $dados = array_map(fn($registro) => array_change_key_case($registro, CASE_LOWER), $dados);
 
-        // ⬇️ Adiciona timestamps nos dados e na lista de colunas
+        // Adiciona created_at e updated_at aos dados
         $agora = date('Y-m-d H:i:s');
-        foreach ($dados as &$row) {
-            $row['created_at'] = $agora;
-            $row['updated_at'] = $agora;
+        foreach ($dados as &$registro) {
+            $registro['created_at'] = $agora;
+            $registro['updated_at'] = $agora;
         }
-        $columns[] = 'created_at';
-        $columns[] = 'updated_at';
+
+        // Lista de colunas
+        $columns = array_keys($dados[0]);
 
         $placeholders = [];
         $params = [];
+
         foreach ($dados as $i => $row) {
             $rowPlaceholders = [];
             foreach ($columns as $col) {
@@ -135,6 +129,7 @@ class BIController {
             . implode(', ', array_map(fn($col) => "$col = VALUES($col)", $columns));
 
         $stmt = $pdo->prepare($sql);
+
         foreach ($params as $key => $value) {
             $stmt->bindValue($key, $value);
         }
@@ -143,6 +138,7 @@ class BIController {
 
         return ['success' => true, 'message' => 'Itens BI inseridos/atualizados com sucesso.'];
     }
+
 
 }
 ?>
