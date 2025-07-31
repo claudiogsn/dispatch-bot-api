@@ -97,10 +97,19 @@ class BIController {
             return ['success' => false, 'message' => 'Nenhum dado fornecido.'];
         }
 
-        // Força todas as chaves dos registros para minúsculas
-        $dados = array_map(fn($registro) => array_change_key_case($registro, CASE_LOWER), $dados);
+        // Normaliza os dados: chaves minúsculas e limpeza de espaços
+        $dados = array_map(function($registro) {
+            $registro = array_change_key_case($registro, CASE_LOWER);
+            foreach ($registro as $k => $v) {
+                if (is_string($v)) {
+                    // Trim e substitui múltiplos espaços internos por 1
+                    $registro[$k] = preg_replace('/\s+/', ' ', trim($v));
+                }
+            }
+            return $registro;
+        }, $dados);
 
-        // Adiciona created_at e updated_at aos dados
+        // Adiciona timestamps
         $agora = date('Y-m-d H:i:s');
         foreach ($dados as &$registro) {
             $registro['created_at'] = $agora;
@@ -138,6 +147,7 @@ class BIController {
 
         return ['success' => true, 'message' => 'Itens BI inseridos/atualizados com sucesso.'];
     }
+
 
 
 }
