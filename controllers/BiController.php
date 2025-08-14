@@ -90,35 +90,105 @@ class BIController {
     }
 
 
-    public static function createOrUpdateItens($dados) {
+    public static function createOrUpdateItens($dados)
+    {
         global $pdo;
 
+
         if (!is_array($dados) || count($dados) === 0) {
+            echo "Nenhum dado fornecido.\n";
             return ['success' => false, 'message' => 'Nenhum dado fornecido.'];
         }
 
-        // Normaliza os dados: chaves minúsculas e limpeza de espaços
+        // Normaliza
         $dados = array_map(function($registro) {
             $registro = array_change_key_case($registro, CASE_LOWER);
             foreach ($registro as $k => $v) {
                 if (is_string($v)) {
-                    // Trim e substitui múltiplos espaços internos por 1
                     $registro[$k] = preg_replace('/\s+/', ' ', trim($v));
                 }
             }
             return $registro;
         }, $dados);
 
-        // Adiciona timestamps
+
+        // Força sequencial como inteiro
+        foreach ($dados as &$registro) {
+            $registro['sequencial'] = (int) $registro['sequencial'];
+        }
+        unset($registro);
+
+        // Timestamps
         $agora = date('Y-m-d H:i:s');
         foreach ($dados as &$registro) {
             $registro['created_at'] = $agora;
             $registro['updated_at'] = $agora;
         }
+        unset($registro);
 
-        // Lista de colunas
+
+        // 1️⃣ Descobre quem já existe no banco
+        $chavesExistentes = [];
+        $placeholdersBusca = [];
+        $paramsBusca = [];
+
+        foreach ($dados as $i => $row) {
+            $placeholdersBusca[] = "(cnpj_estabelecimento = :cnpj{$i} 
+                                 AND num_controle = :num{$i} 
+                                 AND nome_estabelecimento = :nome{$i} 
+                                 AND sequencial = :seq{$i})";
+            $paramsBusca[":cnpj{$i}"] = $row['cnpj_estabelecimento'];
+            $paramsBusca[":num{$i}"]  = $row['num_controle'];
+            $paramsBusca[":nome{$i}"] = $row['nome_estabelecimento'];
+            $paramsBusca[":seq{$i}"]  = $row['sequencial'];
+        }
+
+
+
+        if (!empty($placeholdersBusca)) {
+            $sqlBusca = "SELECT cnpj_estabelecimento, num_controle, nome_estabelecimento, sequencial
+                     FROM bi_itens 
+                     WHERE " . implode(" OR ", $placeholdersBusca);
+
+            $stmtBusca = $pdo->prepare($sqlBusca);
+            $stmtBusca->execute($paramsBusca);
+
+            while ($row = $stmtBusca->fetch(PDO::FETCH_ASSOC)) {
+                $chave = $row['cnpj_estabelecimento'] . '|' . $row['num_controle'] . '|' . $row['nome_estabelecimento'] . '|' . $row['sequencial'];
+                $chavesExistentes[$chave] = true;
+            }
+        }
+
+
+        // 2️⃣ Monta listas de inseridos e atualizados
+        $chavesVistas = [];
+        $listaInseridos = [];
+        $listaAtualizados = [];
+
+        foreach ($dados as $registro) {
+            $chave = $registro['cnpj_estabelecimento'] . '|' .
+                $registro['num_controle'] . '|' .
+                $registro['nome_estabelecimento'] . '|' .
+                $registro['sequencial'];
+
+            $info = [
+                'num_controle' => $registro['num_controle'],
+                'sequencial'   => $registro['sequencial'],
+                'dt_mov'       => $registro['dt_mov'] ?? null
+            ];
+
+            if (isset($chavesExistentes[$chave])) {
+                $listaAtualizados[] = $info;
+            } elseif (isset($chavesVistas[$chave])) {
+                $listaAtualizados[] = $info;
+            } else {
+                $listaInseridos[] = $info;
+                $chavesVistas[$chave] = true;
+            }
+        }
+
+        // 3️⃣ Insere / atualiza
         $columns = array_keys($dados[0]);
-
         $placeholders = [];
         $params = [];
 
@@ -137,16 +207,41 @@ class BIController {
             . " ON DUPLICATE KEY UPDATE "
             . implode(', ', array_map(fn($col) => "$col = VALUES($col)", $columns));
 
-        $stmt = $pdo->prepare($sql);
 
+        $stmt = $pdo->prepare($sql);
         foreach ($params as $key => $value) {
-            $stmt->bindValue($key, $value);
+            // Força sequencial como inteiro
+            if (strpos($key, 'sequencial') !== false) {
+                $stmt->bindValue($key, (int)$value, PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue($key, $value);
+            }
         }
 
         $stmt->execute();
 
-        return ['success' => true, 'message' => 'Itens BI inseridos/atualizados com sucesso.'];
+        // 4️⃣ Gera log formatado
+        $logData = [
+            'data_execucao'      => date('Y-m-d H:i:s'),
+            'totalRecebido'      => count($dados),
+            'inseridos'          => count($listaInseridos),
+            'atualizados'        => count($listaAtualizados),
+            'detalhes_inseridos' => $listaInseridos,
+            'detalhes_atualizados' => $listaAtualizados
+        ];
+
+
+        return [
+            'success' => true,
+            'message' => 'Itens BI inseridos/atualizados com sucesso.',
+            'log'     => $logData
+        ];
     }
+
+
+
+
+
 
 
 
