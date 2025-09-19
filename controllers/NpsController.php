@@ -736,8 +736,11 @@ public static function UpdateQuestion(array $pergunta): array
                 r.plataforma,
                 r.latitude,
                 r.longitude,
-                r.nome_loja            FROM formulario_respostas r
+                r.nome_loja,
+                od.telefone
+            FROM formulario_respostas r
             LEFT JOIN formulario_perguntas p ON p.id = r.pergunta_id
+            LEFT JOIN orders_delivery od ON od.chave_pedido = r.chave_pedido
             WHERE r.resposta IS NOT NULL
             AND r.created_at BETWEEN :dt_inicio AND :dt_fim
             ORDER BY r.created_at DESC
