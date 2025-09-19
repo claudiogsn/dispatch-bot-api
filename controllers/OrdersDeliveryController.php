@@ -652,14 +652,14 @@ class OrdersDeliveryController {
         try {
             // 1. Busca os dados do pedido (matriz)
             $stmtPedido = $pdo->prepare("
-                SELECT 
-                    od.*, 
-                    e.nome_fantasia AS nome_loja
-                FROM orders_delivery od
-                LEFT JOIN estabelecimento e ON e.cnpj = od.cnpj
-                WHERE od.chave_pedido = :chave
-                LIMIT 1;
-            ");
+            SELECT 
+                od.*, 
+                e.nome_fantasia AS nome_loja
+            FROM orders_delivery od
+            LEFT JOIN estabelecimento e ON e.cnpj = od.cnpj
+            WHERE od.chave_pedido = :chave
+            LIMIT 1;
+        ");
             $stmtPedido->execute([':chave' => $chave_pedido]);
             $pedido = $stmtPedido->fetch(PDO::FETCH_ASSOC);
 
@@ -713,13 +713,26 @@ class OrdersDeliveryController {
                 $paradas = $stmtParadas->fetchAll(PDO::FETCH_ASSOC);
             }
 
+            // 6. Itens do pedido (bi_itens)
+            $stmtItens = $pdo->prepare("
+            SELECT * 
+            FROM bi_itens 
+            WHERE cnpj_estabelecimento = :cnpj AND num_controle = :num_controle
+        ");
+            $stmtItens->execute([
+                ':cnpj' => $pedido['cnpj'],
+                ':num_controle' => $pedido['num_controle']
+            ]);
+            $itensPedido = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
             return [
                 'success' => true,
                 'pedido' => $pedido,
                 'respostas' => $respostas,
                 'whatsapp_mensagem' => $mensagemWhatsApp,
                 'mensagem_nps' => $mensagemNps,
-                'paradas' => $paradas
+                'paradas' => $paradas,
+                'itens_pedido' => $itensPedido
             ];
         } catch (Exception $e) {
             http_response_code(500);
