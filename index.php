@@ -431,9 +431,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 break;
                 case 'GetDetalhesMesa':
-                    if (isset($requestData['chave_pedido'])) {
-                        $response = OrdersDeliveryController::GetDetalhesMesa($requestData['chave_pedido']);
-                    } else {
+                    if (isset($requestData['chave_pedido']) && isset($requestData['timestamp'])) {
+                        $response = OrdersDeliveryController::GetDetalhesMesa($requestData['chave_pedido'], $requestData['timestamp']);
+                    }else {
                         http_response_code(400);
                         throw new Exception("Missing field: chave_pedido.");
                     }
