@@ -58,16 +58,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 break;
             case 'getContasBi':
-                if (isset($requestData['data_inicial']) && isset($requestData['data_final'])) {
-                    $response = BiController::getContasBi($requestData['data_inicial'], $requestData['data_final']);
+                if (isset($requestData['data_inicial'])) {
+                    $response = BiController::getContasBi($requestData);
                 } else {
                     http_response_code(400);
                     throw new Exception("Missing required fields: data_inicial and data_final.");
                 }
                 break;
             case 'getItensBi':
-                if (isset($requestData['data_inicial']) && isset($requestData['data_final'])) {
-                    $response = BiController::getItensBi($requestData['data_inicial'], $requestData['data_final']);
+                if (isset($requestData['data_inicial'])) {
+                    $response = BiController::getItensBi($requestData);
                 } else {
                     http_response_code(400);
                     throw new Exception("Missing required fields: data_inicial and data_final.");
