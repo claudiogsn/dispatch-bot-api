@@ -267,7 +267,7 @@ class OrdersDeliveryController {
           AND od.cod_ifood != ''
           AND od.status IN (1, -1, 2)
           AND od.hora_abertura BETWEEN :start AND :end
-
+          GROUP BY od.id
         UNION ALL
 
         -- Parte NÃO HUB-IFOOD
@@ -285,8 +285,6 @@ class OrdersDeliveryController {
           AND od.status IN (1, -1, 2)
           AND od.hora_abertura BETWEEN :start AND :end
           GROUP BY od.id
-
-
         ORDER BY hora_saida DESC;
     ";
 
