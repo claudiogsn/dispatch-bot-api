@@ -284,6 +284,8 @@ class OrdersDeliveryController {
           AND od.cod_iapp != ''
           AND od.status IN (1, -1, 2)
           AND od.hora_abertura BETWEEN :start AND :end
+          GROUP BY od.id
+
 
         ORDER BY hora_saida DESC;
     ";
