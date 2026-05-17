@@ -80,6 +80,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'getNameEstabelecimentos':
                 $response = EstabelecimentoController::getNameEstabelecimentos();
                 break;
+            case 'getEstabelecimentosKds':
+                $response = EstabelecimentoController::getEstabelecimentosKds();
+                break;
             case 'getEstabelecimentoByCnpj':
                 $response = EstabelecimentoController::getEstabelecimentoByCnpj($requestData['cnpj'], $requestData['token']);
                 break;

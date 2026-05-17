@@ -22,7 +22,6 @@ class OrdersDeliveryController {
         return $chave;
     }
 
-    // Cria uma nova entrada na tabela orders_delivery
     public static function createOrderDelivery($data) {
         global $pdo;
 
@@ -88,9 +87,6 @@ class OrdersDeliveryController {
         return $executed;
     }
 
-
-
-    // Busca todos os pedidos
     public static function getAllOrderDeliveries() {
         global $pdo;
 
@@ -99,7 +95,6 @@ class OrdersDeliveryController {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // Busca um pedido pelo ID
     public static function getOrderDeliveryById($id) {
         global $pdo;
 
@@ -110,7 +105,6 @@ class OrdersDeliveryController {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    // Atualiza um pedido pelo ID
     public static function updateOrderDelivery($id, $data) {
         global $pdo;
 
@@ -147,7 +141,6 @@ class OrdersDeliveryController {
         $stmt->bindParam(':id', $id);
         return $stmt->execute();
     }
-
 
     public static function updateOrderDeliveryByCompositeKey($cnpj, $hash, $num_controle, $data) {
         global $pdo;
@@ -214,7 +207,6 @@ class OrdersDeliveryController {
 
         return $executed;
     }
-
 
     public static function getOrderDeliveryByCompositeKey($cnpj, $hash, $num_controle) {
         global $pdo;
@@ -303,7 +295,6 @@ class OrdersDeliveryController {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
 
 
     public static function calculateTimesByCompositeKey($cnpj, $hash, $num_controle) {
@@ -449,7 +440,6 @@ class OrdersDeliveryController {
         return $series;
     }
 
-
     public static function getDeliveryInfoByNumeroParada($numero_parada) {
         global $pdo;
 
@@ -558,8 +548,6 @@ class OrdersDeliveryController {
         return $dt ? $dt->format('d/m/Y H:i') : $data;
     }
 
-
-
     public static function marcarNpsComoRespondido($chave_pedido): array
     {
         global $pdo;
@@ -634,7 +622,6 @@ class OrdersDeliveryController {
             ];
         }
     }
-
 
     public static function formatarNomeCliente($nome)
     {

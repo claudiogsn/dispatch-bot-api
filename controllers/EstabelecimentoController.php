@@ -6,6 +6,40 @@ require_once __DIR__ . '/../database/db.php';
 
 class EstabelecimentoController {
 
+    public static function getEstabelecimentosKds(): array
+    {
+        global $pdo;
+
+        try {
+            $query = "
+            SELECT 
+                nome_fantasia,
+                cnpj
+            FROM estabelecimento
+            GROUP BY cnpj, nome_fantasia
+            ORDER BY nome_fantasia ASC
+        ";
+
+            $stmt = $pdo->prepare($query);
+            $stmt->execute();
+
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                'success' => true,
+                'data' => $result
+            ];
+
+        } catch (Exception $e) {
+            http_response_code(500);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
     public static function getEstabelecimentos() {
         global $pdo;
 
