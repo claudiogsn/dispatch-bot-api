@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // 2. Importa a conexão global e as classes necessárias
 require_once __DIR__ . '/database/dbCrm.php';
+require_once __DIR__ . '/controllers/UserController.php';
 
 if (!isset($pdoCrm)) {
     http_response_code(500);
