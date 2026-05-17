@@ -94,25 +94,6 @@ class UserController {
         $userDetails['token'] = $lastAccess['sessionid'] ?? null;
         $userDetails['is_logged'] = isset($lastAccess['sessionid']);
 
-        /* =========================
-         * GRUPO PADRÃO (pela unidade)
-         * ========================= */
-        $userDetails['group'] = null;
-
-        if (!empty($userDetails['system_unit_id'])) {
-            // Busca grupos vinculados à unidade
-            $grupos = BiController::getGroupByUnit($userDetails['system_unit_id']);
-
-            if (!empty($grupos)) {
-                // pega o primeiro como padrão
-                $userDetails['group'] = [
-                    'id'   => $grupos[0]['id'],
-                    'name' => $grupos[0]['nome'],
-                    'slug' => $grupos[0]['slug'],
-                ];
-            }
-        }
-
         return [
             'success' => true,
             'userDetails' => $userDetails
